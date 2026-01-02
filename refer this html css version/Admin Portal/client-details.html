@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Details - Platform Governance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .details-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Reusing form styles but ensuring they look good in cards */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .location-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .location-item:hover {
+            border-color: var(--primary-glow);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="topbar-container"></div>
+
+            <div class="content-area" id="client-details-view">
+                <div class="section-header" style="margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <a href="clients.html" class="btn btn-secondary" style="padding: 6px 10px;"><i
+                                class="ph ph-arrow-left"></i> Back</a>
+                        <h2 class="section-title" id="client-page-title">Loading Client...</h2>
+                    </div>
+                    <button class="btn btn-primary" id="save-client-btn"><i class="ph ph-floppy-disk"></i> Save
+                        Changes</button>
+                </div>
+
+                <!-- Summary Snapshot -->
+                <div class="summary-snapshot"
+                    style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1.5rem; margin-bottom: 2rem;">
+                    <div class="card" style="margin:0; padding:1.2rem; display:flex; align-items:center; gap:1rem;">
+                        <div
+                            style="width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:var(--accent);">
+                            <i class="ph ph-crown" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Current Tier
+                            </div>
+                            <div style="font-weight:600; font-size:1.1rem;" id="snap-tier">-</div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin:0; padding:1.2rem; display:flex; align-items:center; gap:1rem;">
+                        <div
+                            style="width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:var(--accent);">
+                            <i class="ph ph-map-pin" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Total Locations
+                            </div>
+                            <div style="font-weight:600; font-size:1.1rem;" id="snap-locs">-</div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin:0; padding:1.2rem; display:flex; align-items:center; gap:1rem;">
+                        <div
+                            style="width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:var(--success);">
+                            <i class="ph ph-desktop" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Active Kiosks
+                            </div>
+                            <div style="font-weight:600; font-size:1.1rem;" id="snap-kiosks">-</div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin:0; padding:1.2rem; display:flex; align-items:center; gap:1rem;">
+                        <div
+                            style="width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:var(--danger);">
+                            <i class="ph ph-currency-dollar" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">Payment Due</div>
+                            <div style="font-weight:600; font-size:1.1rem;">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="tabs-nav"
+                    style="margin-bottom: 1.5rem; display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                    <div class="tab-link active" data-tab="tab-gen"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid var(--accent); color: var(--text-main); font-weight: 500;">
+                        General</div>
+                    <div class="tab-link" data-tab="tab-billing"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500;">
+                        Billing & Address</div>
+                    <div class="tab-link" data-tab="tab-locs"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500;">
+                        Locations</div>
+                    <div class="tab-link" data-tab="tab-kiosks"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500;">
+                        Kiosks</div>
+                    <div class="tab-link" data-tab="tab-settings"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500;">
+                        Settings</div>
+                    <div class="tab-link" data-tab="tab-logs"
+                        style="padding-bottom: 0.75rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 500;">
+                        Activity Log</div>
+                </div>
+
+                <form id="client-details-form">
+                    <!-- Tab: General -->
+                    <div id="tab-gen" class="tab-pane active" style="display:block;">
+                        <div class="card" style="max-width: 600px;">
+                            <h3 class="card-header">Core Details</h3>
+                            <div class="form-group">
+                                <label class="form-label">Company Name</label>
+                                <input type="text" class="form-input" name="company_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select class="form-input" name="status">
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Suspended">Suspended</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tier</label>
+                                <select class="form-input" name="tier">
+                                    <option value="Starter">Starter</option>
+                                    <option value="Growth">Growth</option>
+                                    <option value="Enterprise">Enterprise</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Client Type(s)</label>
+                                <div id="client-type-container" style="position: relative;">
+                                    <div id="client-type-display" class="form-input"
+                                        style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
+                                        onclick="toggleClientTypeDropdown()">
+                                        <span id="client-type-selected-text" style="color: var(--text-muted);">Select
+                                            client types...</span>
+                                        <i class="ph ph-caret-down"></i>
+                                    </div>
+                                    <div id="client-type-dropdown"
+                                        style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 4px; z-index: 100; max-height: 250px; overflow-y: auto;">
+                                        <label
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                                            onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" name="client_type" value="Retail Brand"
+                                                onchange="updateClientTypeDisplay()">
+                                            <div>
+                                                <div style="font-weight: 500;">Retail Brand</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">Physical
+                                                    stores (e.g., Tata Zudio, Westside)</div>
+                                            </div>
+                                        </label>
+                                        <label
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                                            onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" name="client_type" value="Online Brand"
+                                                onchange="updateClientTypeDisplay()">
+                                            <div>
+                                                <div style="font-weight: 500;">Online Brand</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">E-commerce
+                                                    platforms with custom websites</div>
+                                            </div>
+                                        </label>
+                                        <label
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                                            onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" name="client_type" value="Shopify Plugin"
+                                                onchange="updateClientTypeDisplay()">
+                                            <div>
+                                                <div style="font-weight: 500;">Shopify Plugin Customer</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">Using our
+                                                    Shopify integration</div>
+                                            </div>
+                                        </label>
+                                        <label
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                                            onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" name="client_type" value="Marketplace Seller"
+                                                onchange="updateClientTypeDisplay()">
+                                            <div>
+                                                <div style="font-weight: 500;">Marketplace Seller</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">Selling on
+                                                    Amazon, Flipkart, etc.</div>
+                                            </div>
+                                        </label>
+                                        <label
+                                            style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; transition: background 0.2s;"
+                                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                                            onmouseout="this.style.background='transparent'">
+                                            <input type="checkbox" name="client_type" value="Hybrid"
+                                                onchange="updateClientTypeDisplay()">
+                                            <div>
+                                                <div style="font-weight: 500;">Hybrid (Retail + Online)</div>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted);">Both physical
+                                                    and online presence</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                    Select all applicable client types
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Timezone</label>
+                                <input class="form-input" list="timezones" name="timezone" placeholder="Search...">
+                                <datalist id="timezones"></datalist>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Billing & Address -->
+                    <div id="tab-billing" class="tab-pane" style="display:none;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <!-- Address & Contact -->
+                            <div>
+                                <div class="card">
+                                    <h3 class="card-header">Billing Information</h3>
+                                    <div class="form-group">
+                                        <label class="form-label">Billing Contact</label>
+                                        <input type="text" class="form-input" name="billing_contact">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Billing Email</label>
+                                        <input type="email" class="form-input" name="billing_email">
+                                    </div>
+                                </div>
+
+                                <div class="card">
+                                    <h3 class="card-header">Headquarters Address</h3>
+                                    <div class="form-group">
+                                        <label class="form-label">Street Address</label>
+                                        <input type="text" class="form-input" name="hq_street">
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="form-group">
+                                            <label class="form-label">City</label>
+                                            <input type="text" class="form-input" name="hq_city">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">State</label>
+                                            <input type="text" class="form-input" name="hq_state">
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Zip</label>
+                                            <input type="text" class="form-input" name="hq_zip">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Country</label>
+                                            <select class="form-input" name="hq_country">
+                                                <option value="" disabled selected>Select</option>
+                                                <option value="US">United States</option>
+                                                <option value="UK">United Kingdom</option>
+                                                <option value="CA">Canada</option>
+                                                <option value="AU">Australia</option>
+                                                <option value="DE">Germany</option>
+                                                <option value="FR">France</option>
+                                                <option value="IT">Italy</option>
+                                                <option value="JP">Japan</option>
+                                                <option value="CN">China</option>
+                                                <option value="IN">India</option>
+                                                <option value="BR">Brazil</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Invoices -->
+                            <div>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>Invoices</span>
+                                        <button type="button" class="btn btn-secondary"
+                                            style="font-size:0.8rem; padding:4px 8px;">
+                                            <i class="ph ph-download-simple"></i> Statement
+                                        </button>
+                                    </div>
+                                    <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
+                                        <thead>
+                                            <tr
+                                                style="border-bottom:1px solid var(--border-color); color:var(--text-muted); text-align:left;">
+                                                <th style="padding-bottom:0.5rem; font-weight:500;">Date</th>
+                                                <th style="padding-bottom:0.5rem; font-weight:500;">Amount</th>
+                                                <th style="padding-bottom:0.5rem; font-weight:500;">Status</th>
+                                                <th style="padding-bottom:0.5rem; font-weight:500; text-align:right;">
+                                                    Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding:0.75rem 0;">Oct 01, 2025</td>
+                                                <td style="padding:0.75rem 0;">$899.00</td>
+                                                <td style="padding:0.75rem 0;"><span
+                                                        style="color:var(--accent); font-size:0.8rem; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px;">Paid</span>
+                                                </td>
+                                                <td style="padding:0.75rem 0; text-align:right;"><i
+                                                        class="ph ph-download-simple"
+                                                        style="cursor:pointer; color:var(--text-muted);"></i></td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                                <td style="padding:0.75rem 0;">Sep 01, 2025</td>
+                                                <td style="padding:0.75rem 0;">$899.00</td>
+                                                <td style="padding:0.75rem 0;"><span
+                                                        style="color:var(--accent); font-size:0.8rem; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px;">Paid</span>
+                                                </td>
+                                                <td style="padding:0.75rem 0; text-align:right;"><i
+                                                        class="ph ph-download-simple"
+                                                        style="cursor:pointer; color:var(--text-muted);"></i></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:0.75rem 0;">Aug 01, 2025</td>
+                                                <td style="padding:0.75rem 0;">$899.00</td>
+                                                <td style="padding:0.75rem 0;"><span
+                                                        style="color:var(--accent); font-size:0.8rem; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px;">Paid</span>
+                                                </td>
+                                                <td style="padding:0.75rem 0; text-align:right;"><i
+                                                        class="ph ph-download-simple"
+                                                        style="cursor:pointer; color:var(--text-muted);"></i></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Locations -->
+                    <div id="tab-locs" class="tab-pane" style="display:none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <span>Locations Management</span>
+                                <button type="button" class="btn btn-secondary" id="add-loc-btn"
+                                    style="font-size:0.8rem; padding:4px 8px;">
+                                    <i class="ph ph-plus"></i> Add New Location
+                                </button>
+                            </div>
+
+                            <div id="locations-list"
+                                style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1rem;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Kiosks -->
+                    <div id="tab-kiosks" class="tab-pane" style="display:none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <span>Kiosk Management</span>
+                                <button type="button" class="btn btn-secondary" id="add-kiosk-btn"
+                                    style="font-size:0.8rem; padding:4px 8px;">
+                                    <i class="ph ph-plus"></i> Add Kiosk
+                                </button>
+                            </div>
+                            <table class="data-table" style="width:100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr
+                                        style="text-align:left; border-bottom:1px solid var(--border-color); color:var(--text-muted); font-size:0.85rem;">
+                                        <th style="padding:10px;">ID / Serial</th>
+                                        <th style="padding:10px;">Assigned Location</th>
+                                        <th style="padding:10px;">Status</th>
+                                        <th style="padding:10px; text-align:right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kiosk-list-body">
+                                    <!-- Populated via Script -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Tab: Settings (formerly API) -->
+                    <div id="tab-settings" class="tab-pane" style="display:none;">
+
+                        <h3 style="margin-bottom: 1rem; font-weight: 600;">Image Specifications</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                            <!-- Input Configurations -->
+                            <div class="card" style="margin: 0;">
+                                <h3 class="card-header">Input Specifications</h3>
+
+                                <div class="form-group">
+                                    <label class="form-label">Allowed Formats</label>
+                                    <select class="form-input" name="spec_input_fmt">
+                                        <option value="JPEG">JPEG</option>
+                                        <option value="PNG">PNG</option>
+                                        <option value="WEBP">WEBP</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Max File Size (MB)</label>
+                                    <input type="number" class="form-input" name="spec_input_max_size" value="10"
+                                        min="1" max="50">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Required Resolution</label>
+                                    <select class="form-input" name="spec_input_res">
+                                        <option value="1920x1080">1920 x 1080 (Landscape)</option>
+                                        <option value="1080x1920">1080 x 1920 (Portrait)</option>
+                                        <option value="3840x2160">3840 x 2160 (4K Landscape)</option>
+                                        <option value="2160x3840">2160 x 3840 (4K Portrait)</option>
+                                        <option value="1280x720">1280 x 720 (720p Landscape)</option>
+                                        <option value="720x1280">720 x 1280 (720p Portrait)</option>
+                                    </select>
+                                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">
+                                        Uploaded images must match this resolution exactly.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Output Configurations -->
+                            <div class="card" style="margin: 0;">
+                                <h3 class="card-header">Output Specifications</h3>
+
+                                <div class="form-group">
+                                    <label class="form-label">Output Format</label>
+                                    <select class="form-input" name="spec_output_fmt">
+                                        <option value="JPEG">JPEG</option>
+                                        <option value="PNG">PNG</option>
+                                        <option value="WEBP">WEBP</option>
+                                        <option value="ORIGINAL">Same as Input</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" style="display:flex; justify-content:space-between;">
+                                        <span>Compression Quality (1-100)</span>
+                                        <span id="quality-val-disp"
+                                            style="color:var(--accent); font-weight:600;">85</span>
+                                    </label>
+                                    <input type="range" class="form-input" name="spec_output_quality" min="1" max="100"
+                                        value="85" style="padding:0; cursor:pointer;"
+                                        oninput="document.getElementById('quality-val-disp').textContent = this.value">
+                                </div>
+
+                                <div
+                                    style="margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color);">
+                                    <div class="form-group">
+                                        <label class="form-label">Target Output Resolution</label>
+                                        <select class="form-input" name="spec_output_res">
+                                            <option value="1920x1080">1920 x 1080 (Landscape)</option>
+                                            <option value="1080x1920">1080 x 1920 (Portrait)</option>
+                                            <option value="3840x2160">3840 x 2160 (4K Landscape)</option>
+                                            <option value="2160x3840">2160 x 3840 (4K Portrait)</option>
+                                            <option value="1280x720">1280 x 720 (720p Landscape)</option>
+                                            <option value="720x1280">720 x 1280 (720p Portrait)</option>
+                                            <option value="ORIGINAL">Same as Input</option>
+                                        </select>
+                                        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">
+                                            Images will be resized to fit these dimensions if needed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style="margin-bottom: 1rem; font-weight: 600;">API Access</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                            <div class="card" style="margin:0;">
+                                <h3 class="card-header">Credentials</h3>
+
+                                <div class="form-group" style="margin-bottom:2rem;">
+                                    <label class="form-label">Client ID</label>
+                                    <div style="display:flex; gap:0.5rem;">
+                                        <input type="text" class="form-input" id="api-client-id" readonly
+                                            style="background:rgba(255,255,255,0.03); font-family:monospace; color:var(--text-muted);"
+                                            value="client_xxx">
+                                        <button type="button" class="btn btn-secondary"
+                                            onclick="navigator.clipboard.writeText(document.getElementById('api-client-id').value)">
+                                            <i class="ph ph-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom:2rem;">
+                                    <label class="form-label">Secret Key</label>
+                                    <div style="display:flex; gap:0.5rem;">
+                                        <input type="password" class="form-input" id="api-secret-key" readonly
+                                            style="background:rgba(255,255,255,0.03); font-family:monospace; letter-spacing:2px;"
+                                            value="sk_live_xxxxxxxxxxxxxxxx">
+                                        <button type="button" class="btn btn-secondary" id="toggle-secret-btn"
+                                            title="Show/Hide">
+                                            <i class="ph ph-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="regenerate-key-btn"
+                                            style="color:var(--danger); border-color:var(--danger);">
+                                            <i class="ph ph-arrows-clockwise"></i> Regenerate
+                                        </button>
+                                    </div>
+                                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">
+                                        Keep this key secret. If compromised, regenerate immediately.
+                                    </p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Webhook URL</label>
+                                    <input type="url" class="form-input" name="webhook_url"
+                                        placeholder="https://api.yourdomain.com/webhooks/nexus">
+                                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">
+                                        We will send event POST requests to this URL.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="card" style="margin:0;">
+                                <h3 class="card-header">Usage & Limits Configuration</h3>
+
+                                <div
+                                    style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">Daily Limit</label>
+                                        <input type="number" class="form-input" name="api_limit_daily" value="10000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Monthly Limit</label>
+                                        <input type="number" class="form-input" name="api_limit_monthly" value="250000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Burst (Req/s)</label>
+                                        <input type="number" class="form-input" name="api_limit_burst" value="50">
+                                    </div>
+                                </div>
+
+                                <div
+                                    style="background:rgba(255,255,255,0.03); padding:1rem; border-radius:8px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:1rem;">
+                                    <!-- Daily Progress -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                            <span style="font-size:0.85rem; color:var(--text-muted);">Daily
+                                                Usage</span>
+                                            <span style="font-size:0.85rem; font-weight:600;"><span
+                                                    id="usage-current-daily">1,245</span> / <span
+                                                    id="usage-max-daily">10,000</span></span>
+                                        </div>
+                                        <div
+                                            style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                                            <div id="usage-progress-daily"
+                                                style="width:12.45%; height:100%; background:var(--success); transition:width 0.3s ease;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Monthly Progress -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                            <span style="font-size:0.85rem; color:var(--text-muted);">Monthly
+                                                Usage</span>
+                                            <span style="font-size:0.85rem; font-weight:600;"><span
+                                                    id="usage-current-monthly">45,210</span> / <span
+                                                    id="usage-max-monthly">250,000</span></span>
+                                        </div>
+                                        <div
+                                            style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                                            <div id="usage-progress-monthly"
+                                                style="width:18%; height:100%; background:var(--accent); transition:width 0.3s ease;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Tab: Activity Log -->
+                    <div id="tab-logs" class="tab-pane" style="display:none;">
+                        <div class="card">
+                            <div class="card-header"
+                                style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Activity Log</span>
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <label class="form-label" style="margin: 0; font-size: 0.875rem;">From:</label>
+                                        <input type="date" class="form-input" id="log-date-from"
+                                            style="padding: 6px 10px; font-size: 0.875rem; width: 150px;">
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <label class="form-label" style="margin: 0; font-size: 0.875rem;">To:</label>
+                                        <input type="date" class="form-input" id="log-date-to"
+                                            style="padding: 6px 10px; font-size: 0.875rem; width: 150px;">
+                                    </div>
+                                    <button type="button" class="btn btn-secondary" id="log-filter-btn"
+                                        style="padding: 6px 12px; font-size: 0.875rem;">
+                                        <i class="ph ph-funnel"></i> Filter
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="log-clear-btn"
+                                        style="padding: 6px 12px; font-size: 0.875rem;">
+                                        <i class="ph ph-x"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="activity-log-container" style="padding: 1rem;">
+                                <!-- Activity log will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+
+                <script>
+                    // Simple inline tab switching logic
+                    document.querySelectorAll('.tab-link').forEach(link => {
+                        link.addEventListener('click', () => {
+                            // Reset navs
+                            document.querySelectorAll('.tab-link').forEach(l => {
+                                l.classList.remove('active');
+                                l.style.borderColor = 'transparent';
+                                l.style.color = 'var(--text-muted)';
+                            });
+
+                            // Activate clicked
+                            link.classList.add('active');
+                            link.style.borderColor = 'var(--accent)';
+                            link.style.color = 'var(--text-main)';
+
+                            // Switch panes
+                            const target = link.dataset.tab;
+                            document.querySelectorAll('.tab-pane').forEach(pane => {
+                                pane.style.display = pane.id === target ? 'block' : 'none';
+                            });
+                        });
+                    });
+
+                    // Client Type Multi-Select Dropdown Logic
+                    function toggleClientTypeDropdown() {
+                        const dropdown = document.getElementById('client-type-dropdown');
+                        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                    }
+
+                    function updateClientTypeDisplay() {
+                        const checkboxes = document.querySelectorAll('input[name="client_type"]:checked');
+                        const selectedText = document.getElementById('client-type-selected-text');
+
+                        if (checkboxes.length === 0) {
+                            selectedText.textContent = 'Select client types...';
+                            selectedText.style.color = 'var(--text-muted)';
+                        } else {
+                            const types = Array.from(checkboxes).map(cb => cb.value);
+                            selectedText.textContent = types.join(', ');
+                            selectedText.style.color = 'var(--text-main)';
+                        }
+                    }
+
+                    // Close dropdown when clicking outside
+                    document.addEventListener('click', function (event) {
+                        const container = document.getElementById('client-type-container');
+                        const dropdown = document.getElementById('client-type-dropdown');
+
+                        if (container && !container.contains(event.target)) {
+                            dropdown.style.display = 'none';
+                        }
+                    });
+                </script>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+
+</body>
+
+</html>

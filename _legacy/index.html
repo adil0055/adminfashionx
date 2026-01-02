@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Platform Governance Control Plane</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="topbar-container"></div>
+
+            <div class="content-area" id="main-view">
+                <div class="dashboard-grid">
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <span>Active Clients</span>
+                            <i class="ph-fill ph-buildings"></i>
+                        </div>
+                        <div class="stats-value">42</div>
+                        <div class="stats-trend up">
+                            <i class="ph-bold ph-trend-up"></i>
+                            +12%
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <span>Total Kiosks</span>
+                            <i class="ph-fill ph-monitor"></i>
+                        </div>
+                        <div class="stats-value">1,208</div>
+                        <div class="stats-trend up">
+                            <i class="ph-bold ph-trend-up"></i>
+                            +5%
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <span>Policy Violations</span>
+                            <i class="ph-fill ph-warning"></i>
+                        </div>
+                        <div class="stats-value">3</div>
+                        <div class="stats-trend down">
+                            <i class="ph-bold ph-trend-down"></i>
+                            -2
+                        </div>
+                    </div>
+                    <div class="stats-card">
+                        <div class="stats-header">
+                            <span>System Health</span>
+                            <i class="ph-fill ph-heartbeat"></i>
+                        </div>
+                        <div class="stats-value">99.9%</div>
+                        <div class="stats-trend up">
+                            <i class="ph-bold ph-trend-up"></i>
+                            Stable
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2 class="section-title">Quick Actions</h2>
+                </div>
+                <div class="dashboard-grid" style="margin-bottom: 2rem;">
+                    <a href="onboard-client.html" class="stats-card"
+                        style="text-decoration:none; justify-content:center; align-items:center; border:1px dashed var(--primary); background-color: rgba(99, 102, 241, 0.05);">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <i class="ph ph-plus-circle" style="font-size: 32px; color: var(--primary);"></i>
+                            <span style="font-weight:600; color:var(--text-main);">Onboard New Client</span>
+                        </div>
+                    </a>
+                    <a href="policies.html" class="stats-card"
+                        style="text-decoration:none; justify-content:center; align-items:center; border:1px dashed var(--border-color);">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <i class="ph ph-file-plus" style="font-size: 32px; color: var(--text-muted);"></i>
+                            <span style="font-weight:600; color:var(--text-main);">Create Policy</span>
+                        </div>
+                    </a>
+                    <a href="features.html" class="stats-card"
+                        style="text-decoration:none; justify-content:center; align-items:center; border:1px dashed var(--border-color);">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <i class="ph ph-toggle-left" style="font-size: 32px; color: var(--text-muted);"></i>
+                            <span style="font-weight:600; color:var(--text-main);">Manage Features</span>
+                        </div>
+                    </a>
+                    <a href="audit.html" class="stats-card"
+                        style="text-decoration:none; justify-content:center; align-items:center; border:1px dashed var(--border-color);">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <i class="ph ph-file-search" style="font-size: 32px; color: var(--text-muted);"></i>
+                            <span style="font-weight:600; color:var(--text-main);">View All Logs</span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="section-header">
+                    <h2 class="section-title">Recent Audit Activity</h2>
+                    <button class="btn btn-secondary">View All Logs</button>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Resource</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#1024</td>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div class="avatar" style="width:24px; height:24px; font-size:10px;">S</div>
+                                        Sarah Ops
+                                    </div>
+                                </td>
+                                <td>Update Feature Flag</td>
+                                <td><span style="color:var(--text-muted);">Global: AI-Beta</span></td>
+                                <td>2 mins ago</td>
+                                <td><span class="status-capsule status-active">Success</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1023</td>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div class="avatar" style="width:24px; height:24px; font-size:10px;">M</div>
+                                        Mike Compliance
+                                    </div>
+                                </td>
+                                <td>Policy Check</td>
+                                <td><span style="color:var(--text-muted);">GDPR Retention</span></td>
+                                <td>15 mins ago</td>
+                                <td><span class="status-capsule status-active">Success</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1022</td>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div class="avatar" style="width:24px; height:24px; font-size:10px;">S</div>
+                                        System Bot
+                                    </div>
+                                </td>
+                                <td>Auto-Cleanup</td>
+                                <td><span style="color:var(--text-muted);">Temp Logs</span></td>
+                                <td>1 hour ago</td>
+                                <td><span class="status-capsule status-active">Success</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1021</td>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div class="avatar" style="width:24px; height:24px; font-size:10px;">J</div>
+                                        John Admin
+                                    </div>
+                                </td>
+                                <td>Limit Increase</td>
+                                <td><span style="color:var(--text-muted);">Client: FashionX</span></td>
+                                <td>3 hours ago</td>
+                                <td><span class="status-capsule status-warning">Pending Approval</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script is now minimal or can be removed if strictly static, but keeping for future interactivity if needed -->
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>

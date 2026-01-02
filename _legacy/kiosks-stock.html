@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Kiosks - Platform Governance Control Plane</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="topbar-container"></div>
+
+            <div class="content-area" id="main-view">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Stock Kiosks</h2>
+                        <p style="margin-top:0.25rem; color:var(--text-muted); font-size:0.85rem;">
+                            Manage unassigned kiosks in inventory. Add new stock, update status, and assign to clients.
+                        </p>
+                    </div>
+                    <button id="add-stock-kiosk-btn" class="btn btn-primary">
+                        <i class="ph ph-plus"></i>
+                        Add Stock Kiosk
+                    </button>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-search">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" class="filter-input" id="stock-search" placeholder="Search by kiosk ID...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="stock-status-filter">Status:</label>
+                        <select class="filter-select" id="stock-status-filter">
+                            <option value="">All</option>
+                            <option value="In Stock">In Stock</option>
+                            <option value="Reserved">Reserved</option>
+                            <option value="RMA / Repair">RMA / Repair</option>
+                            <option value="Retired">Retired</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="stock-location-filter">Location:</label>
+                        <input type="text" class="filter-input" id="stock-location-filter"
+                            placeholder="Filter by location..." style="min-width: 180px;">
+                    </div>
+                    <div class="filter-actions">
+                        <button class="filter-clear" id="stock-filter-clear">
+                            <i class="ph ph-x"></i> Clear
+                        </button>
+                    </div>
+                    <div class="filter-results" id="stock-filter-results"></div>
+                </div>
+
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Kiosk ID</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-kiosks-table-body">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Kiosk Modal -->
+    <div class="modal-overlay" id="add-kiosk-modal">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Add New Stock Kiosk</h3>
+                <button class="close-modal" id="close-modal-btn"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-kiosk-form">
+                    <div class="form-group">
+                        <label class="form-label">Kiosk ID (Serial Number)</label>
+                        <input type="text" class="form-input" id="new-kiosk-id" placeholder="e.g. KSK-9942" required>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                            Leave blank to auto-generate a random ID.
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Initial Location</label>
+                        <input type="text" class="form-input" id="new-kiosk-location" placeholder="e.g. Warehouse A">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Initial Status</label>
+                        <select class="form-input" id="new-kiosk-status">
+                            <option value="In Stock" selected>In Stock</option>
+                            <option value="Reserved">Reserved</option>
+                            <option value="RMA / Repair">RMA / Repair</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"
+                style="padding: 1.5rem 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn btn-secondary" id="cancel-modal-btn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-add-kiosk-btn">Add Kiosk</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>

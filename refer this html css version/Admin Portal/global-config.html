@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Config - Platform Governance Control Plane</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="topbar-container"></div>
+
+            <div class="content-area" id="main-view">
+                <div class="section-header">
+                    <h2 class="section-title">System Defaults</h2>
+                    <button class="btn btn-primary"><i class="ph ph-floppy-disk"></i> Save Changes</button>
+                </div>
+
+                <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div
+                        style="background: var(--bg-card); padding: 2rem; border-radius: 16px; border: var(--glass-border);">
+                        <h3 style="margin-bottom: 1.5rem; font-family: var(--font-heading);">Platform Parameters</h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Default Kiosk Heartbeat Interval (sec)</label>
+                            <input type="number" class="form-input" value="60">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Global Maintenance Mode</label>
+                            <div class="feature-card" style="margin:0; padding: 1rem; background: rgba(0,0,0,0.2);">
+                                <div class="feature-info">
+                                    <h3 style="font-size:0.9rem;">Maintenance State</h3>
+                                    <p style="font-size: 0.8rem;">Forces all connected kiosks into maintenance screen.
+                                    </p>
+                                </div>
+                                <div class="toggle-switch"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Max Global Concurent Sessions</label>
+                            <input type="number" class="form-input" value="50000">
+                        </div>
+                    </div>
+
+                    <div
+                        style="background: var(--bg-card); padding: 2rem; border-radius: 16px; border: var(--glass-border);">
+                        <h3 style="margin-bottom: 1.5rem; font-family: var(--font-heading);">Environment Info</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <p style="color:var(--text-muted); font-size:0.875rem;">Current Version</p>
+                            <p style="font-weight:600;">v2.4.0-release</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <p style="color:var(--text-muted); font-size:0.875rem;">Last Deployed</p>
+                            <p style="font-weight:600;">Dec 18, 04:00 AM</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <p style="color:var(--text-muted); font-size:0.875rem;">Region</p>
+                            <p style="font-weight:600;">US-East-1</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>

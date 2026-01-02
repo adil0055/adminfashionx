@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Platform Governance</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/modal.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <div id="topbar-container"></div>
+
+            <!-- Page Content -->
+            <div class="page-content">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">User Management</h2>
+                        <p style="margin-top:0.25rem; color:var(--text-muted); font-size:0.85rem;">
+                            Manage system users, roles, and access permissions
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" id="add-user-btn">
+                        <i class="ph ph-plus"></i> Add User
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <div class="filter-search">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" class="filter-input" id="user-search"
+                            placeholder="Search by name or email...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="role-filter">Role:</label>
+                        <select class="filter-select" id="role-filter">
+                            <option value="">All Roles</option>
+                            <option value="Super Admin">Super Admin</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Viewer">Viewer</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="status-filter">Status:</label>
+                        <select class="filter-select" id="status-filter">
+                            <option value="">All</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="filter-clear" id="filter-clear">
+                            <i class="ph ph-x"></i> Clear
+                        </button>
+                    </div>
+                    <div class="filter-results" id="filter-results"></div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal-overlay" id="user-modal">
+        <div class="modal-content" style="width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="user-modal-title">Add New User</h3>
+                <button class="modal-close" id="close-user-modal">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-input" name="name" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-input" name="email" required placeholder="john.doe@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-input" name="role" id="user-role-select" required>
+                            <option value="">Select a role</option>
+                            <option value="Super Admin">Super Admin</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Viewer">Viewer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-input" name="status">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="permissions-display" style="display: none;">
+                        <label class="form-label">Permissions</label>
+                        <div id="permissions-list"
+                            style="padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <!-- Permissions will be populated here -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-user-btn">Cancel</button>
+                <button class="btn btn-primary" id="save-user-btn">Save User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-user-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Delete User</h2>
+                <button class="modal-close" id="close-delete-user-modal">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem;">Are you sure you want to delete this user?</p>
+                <p style="font-weight: 600; color: var(--text-main);" id="delete-user-name"></p>
+                <p style="font-size: 0.875rem; color: var(--warning); margin-top: 1rem;">
+                    <i class="ph ph-warning"></i> This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-delete-user-btn">Cancel</button>
+                <button class="btn btn-danger" id="confirm-delete-user-btn">Delete User</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>

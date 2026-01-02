@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboard Client - Platform Governance Control Plane</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/wizard.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body>
+
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="topbar-container"></div>
+
+            <div class="content-area" id="main-view">
+                <div class="wizard-container">
+                    <form id="wizard-form">
+                        <!-- Step Indicators -->
+                        <div class="wizard-steps">
+                            <div class="step-indicator active" data-step="1">
+                                <div class="step-circle">1</div>
+                                <span class="step-label">Details</span>
+                            </div>
+                            <div class="step-indicator" data-step="2">
+                                <div class="step-circle">2</div>
+                                <span class="step-label">Billing & Addr</span>
+                            </div>
+                            <div class="step-indicator" data-step="3">
+                                <div class="step-circle">3</div>
+                                <span class="step-label">Locations</span>
+                            </div>
+                            <div class="step-indicator" data-step="4">
+                                <div class="step-circle">4</div>
+                                <span class="step-label">Subscription</span>
+                            </div>
+                            <div class="step-indicator" data-step="5">
+                                <div class="step-circle">5</div>
+                                <span class="step-label">Review</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Basic Details -->
+                        <div class="step-content active" id="step-1">
+                            <h2 style="margin-bottom:1.5rem; text-align:center;">Client Details</h2>
+                            <div class="form-group">
+                                <label class="form-label">Company Name</label>
+                                <input type="text" class="form-input" name="company_name"
+                                    placeholder="e.g. Global Retail Inc." required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Timezone</label>
+                                <input class="form-input" list="timezones" name="timezone"
+                                    placeholder="Search Timezone...">
+                                <datalist id="timezones">
+                                    <!-- Populated via JS -->
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Addresses & Billing -->
+                        <div class="step-content" id="step-2">
+                            <h2 style="margin-bottom:1.5rem; text-align:center;">Address & Billing</h2>
+
+                            <!-- HQ Address -->
+                            <div style="margin-bottom:2rem;">
+                                <h3
+                                    style="font-size:1rem; margin-bottom:1rem; color:var(--text-main); border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                    Headquarters Address</h3>
+                                <div class="form-group">
+                                    <label class="form-label">Street Address</label>
+                                    <input type="text" class="form-input" name="hq_street"
+                                        placeholder="123 Fashion Ave">
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">City</label>
+                                        <input type="text" class="form-input" name="hq_city" placeholder="New York">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">State / Province</label>
+                                        <input type="text" class="form-input" name="hq_state" placeholder="NY">
+                                    </div>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                                    <div class="form-group">
+                                        <label class="form-label">Postal Code</label>
+                                        <input type="text" class="form-input" name="hq_zip" placeholder="10001">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Country</label>
+                                        <select class="form-input" name="hq_country">
+                                            <option value="" disabled selected>Select Country</option>
+                                            <option value="US">United States</option>
+                                            <option value="UK">United Kingdom</option>
+                                            <option value="CA">Canada</option>
+                                            <option value="AU">Australia</option>
+                                            <option value="DE">Germany</option>
+                                            <option value="FR">France</option>
+                                            <option value="IT">Italy</option>
+                                            <option value="JP">Japan</option>
+                                            <option value="CN">China</option>
+                                            <option value="IN">India</option>
+                                            <option value="BR">Brazil</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Billing Info -->
+                            <div>
+                                <h3
+                                    style="font-size:1rem; margin-bottom:1rem; color:var(--text-main); border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
+                                    Billing Information
+                                </h3>
+                                <div class="form-group">
+                                    <label class="form-label">Billing Contact Name</label>
+                                    <input type="text" class="form-input" name="billing_contact" placeholder="Jane Doe">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Billing Email</label>
+                                    <input type="email" class="form-input" name="billing_email"
+                                        placeholder="billing@company.com">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Locations -->
+                        <div class="step-content" id="step-3">
+                            <h2 style="margin-bottom:0.5rem; text-align:center;">Manage Locations</h2>
+                            <p
+                                style="text-align:center; color:var(--text-muted); margin-bottom:1.5rem; font-size:0.9rem;">
+                                Define physical locations.
+                            </p>
+
+                            <div class="form-group">
+                                <div id="wizard-locations-container"
+                                    style="display:flex; flex-direction:column; gap:10px;">
+                                    <!-- Populated via JS -->
+                                    <div style="text-align:center; padding:2rem; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:8px;"
+                                        id="no-locations-msg">
+                                        No locations added yet.
+                                    </div>
+                                </div>
+                                <button type="button" class="add-location-btn" id="wizard-add-location"
+                                    style="margin-top:1.5rem;">
+                                    <i class="ph ph-plus"></i> Add New Location
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Subscription Tier -->
+                        <div class="step-content" id="step-4">
+                            <h2 style="margin-bottom:1.5rem; text-align:center;">Select Subscription Tier</h2>
+                            <div class="tier-grid">
+                                <div class="tier-card" onclick="selectTier(this, 'Starter')">
+                                    <i class="ph ph-rocket tier-icon"></i>
+                                    <div class="tier-name">Starter</div>
+                                    <div class="tier-price">$299 / mo</div>
+                                    <ul class="tier-features">
+                                        <li>Up to 5 Kiosks</li>
+                                        <li>Basic Analytics</li>
+                                        <li>Email Support</li>
+                                    </ul>
+                                </div>
+                                <div class="tier-card selected" onclick="selectTier(this, 'Growth')">
+                                    <i class="ph ph-chart-line-up tier-icon"></i>
+                                    <div class="tier-name">Growth</div>
+                                    <div class="tier-price">$899 / mo</div>
+                                    <ul class="tier-features">
+                                        <li>Up to 20 Kiosks</li>
+                                        <li>Advanced Analytics</li>
+                                        <li>Priority Support</li>
+                                        <li>Custom Branding</li>
+                                    </ul>
+                                </div>
+                                <div class="tier-card" onclick="selectTier(this, 'Enterprise')">
+                                    <i class="ph ph-buildings tier-icon"></i>
+                                    <div class="tier-name">Enterprise</div>
+                                    <div class="tier-price">Custom</div>
+                                    <ul class="tier-features">
+                                        <li>Unlimited Kiosks</li>
+                                        <li>Full API Access</li>
+                                        <li>Dedicated Success Manager</li>
+                                        <li>SLA Guarantees</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <input type="hidden" name="tier" id="selected-tier" value="Growth">
+                        </div>
+
+                        <!-- Step 5: Review -->
+                        <div class="step-content" id="step-5">
+                            <h2 style="margin-bottom:1.5rem; text-align:center;">Review & Confirm</h2>
+                            <div style="background: rgba(255,255,255,0.05); border-radius:12px; padding:1.5rem;">
+                                <div
+                                    style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem; margin-bottom:1rem;">
+                                    <div>
+                                        <h4 style="color:var(--text-muted); font-size:0.875rem;">Company</h4>
+                                        <p style="font-size:1.1rem; font-weight:600;" id="review-company">-</p>
+                                    </div>
+                                    <div>
+                                        <h4 style="color:var(--text-muted); font-size:0.875rem;">Tier</h4>
+                                        <p style="font-size:1.1rem; font-weight:600; color:var(--primary);"
+                                            id="review-tier">-</p>
+                                    </div>
+                                </div>
+
+                                <div
+                                    style="margin-bottom:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;">
+                                    <h4 style="color:var(--text-muted); font-size:0.875rem;">Headquarters</h4>
+                                    <p style="font-size:1rem;" id="review-address">-</p>
+                                </div>
+                                <div>
+                                    <h4 style="color:var(--text-muted); font-size:0.875rem; margin-bottom:0.5rem;">
+                                        Locations Overview</h4>
+                                    <ul id="review-locations-list"
+                                        style="list-style:none; font-size:0.9rem; color:var(--text-main);">
+                                        <!-- Populated via JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Control -->
+                        <div class="wizard-footer">
+                            <button type="button" class="btn btn-secondary" id="btn-prev" disabled>Back</button>
+                            <button type="button" class="btn btn-primary" id="btn-next">Next Step</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Location Modal -->
+    <div class="modal-overlay" id="location-modal">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Location</h3>
+                <button class="close-modal" id="close-location-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Location Name</label>
+                    <input type="text" class="form-input" id="modal-loc-name" placeholder="e.g. Flagship Store">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-input" id="modal-loc-address" placeholder="123 Main St">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                        <input type="checkbox" id="modal-loc-primary">
+                        Mark as Primary Headquarters
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-location-btn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-location-btn">Add Location</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/components.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>
