@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Rocket, ChartLineUp, Buildings, X, Copy, CheckCircle, CircleNotch } from '@phosphor-icons/react';
+import Modal from '../components/common/Modal';
 
 const OnboardClient = () => {
     const navigate = useNavigate();
@@ -17,7 +18,13 @@ const OnboardClient = () => {
         billing_contact: '',
         billing_email: '',
         tier: 'Growth',
-        locations: []
+        locations: [],
+        image_specs: {
+            max_size: 5,
+            min_width: 1024,
+            min_height: 1024,
+            allowed_formats: ['jpg', 'png']
+        }
     });
 
     // Modal State
@@ -28,12 +35,22 @@ const OnboardClient = () => {
         isPrimary: false
     });
 
+    // Custom Modal State for alerts/info
+    const [customModal, setCustomModal] = useState({
+        show: false,
+        type: 'info',
+        title: '',
+        message: ''
+    });
+
+    const closeCustomModal = () => setCustomModal({ ...customModal, show: false });
+
     // API & Secret State
     const [submitting, setSubmitting] = useState(false);
     const [createdClient, setCreatedClient] = useState(null); // { secret, api_client_id, id }
     const [showSecretModal, setShowSecretModal] = useState(false);
 
-    const totalSteps = 5;
+    const totalSteps = 6;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -44,7 +61,12 @@ const OnboardClient = () => {
         if (currentStep < totalSteps) {
             // Basic Validation
             if (currentStep === 1 && !formData.company_name) {
-                alert('Company Name is required');
+                setCustomModal({
+                    show: true,
+                    type: 'info',
+                    title: 'Validation Error',
+                    message: 'Company Name is required'
+                });
                 return;
             }
             setCurrentStep(prev => prev + 1);
@@ -52,8 +74,6 @@ const OnboardClient = () => {
             submitClient();
         }
     };
-
-
 
     const submitClient = async () => {
         setSubmitting(true);
@@ -66,7 +86,15 @@ const OnboardClient = () => {
             const createResult = await api.clients.create({
                 display_name: formData.company_name,
                 contact_email: formData.billing_email,
-                tier_id: tierId
+                tier_id: tierId,
+                timezone: formData.timezone,
+                hq_street: formData.hq_street,
+                hq_city: formData.hq_city,
+                hq_state: formData.hq_state,
+                hq_zip: formData.hq_zip,
+                hq_country: formData.hq_country,
+                billing_contact: formData.billing_contact,
+                image_specs: formData.image_specs
             });
 
             if (!createResult.success) throw new Error(createResult.message || 'Failed to create client');
@@ -88,7 +116,12 @@ const OnboardClient = () => {
 
         } catch (error) {
             console.error('Onboarding failed:', error);
-            alert(`Onboarding failed: ${error.message}`);
+            setCustomModal({
+                show: true,
+                type: 'error',
+                title: 'Onboarding Failed',
+                message: error.message
+            });
         } finally {
             setSubmitting(false);
         }
@@ -108,7 +141,12 @@ const OnboardClient = () => {
 
     const saveLocation = () => {
         if (!modalData.name) {
-            alert('Location Name is required');
+            setCustomModal({
+                show: true,
+                type: 'info',
+                title: 'Validation Error',
+                message: 'Location Name is required'
+            });
             return;
         }
 
@@ -130,7 +168,12 @@ const OnboardClient = () => {
 
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
-        alert('Copied to clipboard!');
+        setCustomModal({
+            show: true,
+            type: 'success',
+            title: 'Copied',
+            message: 'Copied to clipboard!'
+        });
     };
 
     const handleFinish = () => {
@@ -142,15 +185,16 @@ const OnboardClient = () => {
         <div className="wizard-container">
             {/* Step Indicators */}
             <div className="wizard-steps">
-                {[1, 2, 3, 4, 5].map(step => (
+                {[1, 2, 3, 4, 5, 6].map(step => (
                     <div key={step} className={`step-indicator ${step === currentStep ? 'active' : ''} ${step < currentStep ? 'completed' : ''}`}>
                         <div className="step-circle">{step}</div>
                         <span className="step-label">
                             {step === 1 && 'Details'}
-                            {step === 2 && 'Billing & Addr'}
+                            {step === 2 && 'Billing'}
                             {step === 3 && 'Locations'}
                             {step === 4 && 'Subscription'}
-                            {step === 5 && 'Review'}
+                            {step === 5 && 'Image Specs'}
+                            {step === 6 && 'Review'}
                         </span>
                     </div>
                 ))}
@@ -331,8 +375,64 @@ const OnboardClient = () => {
                 </div>
             )}
 
-            {/* Step 5: Review */}
+            {/* Step 5: Image Specs */}
             {currentStep === 5 && (
+                <div className="step-content active">
+                    <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Image Specifications</h2>
+                    <div className="form-group">
+                        <label className="form-label">Max File Size (MB)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            value={formData.image_specs.max_size}
+                            onChange={e => setFormData({ ...formData, image_specs: { ...formData.image_specs, max_size: parseInt(e.target.value) || 0 } })}
+                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Min Width (px)</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={formData.image_specs.min_width}
+                                onChange={e => setFormData({ ...formData, image_specs: { ...formData.image_specs, min_width: parseInt(e.target.value) || 0 } })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Min Height (px)</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={formData.image_specs.min_height}
+                                onChange={e => setFormData({ ...formData, image_specs: { ...formData.image_specs, min_height: parseInt(e.target.value) || 0 } })}
+                            />
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Allowed Formats</label>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            {['jpg', 'png', 'webp'].map(fmt => (
+                                <label key={fmt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.image_specs.allowed_formats.includes(fmt)}
+                                        onChange={e => {
+                                            const newFormats = e.target.checked
+                                                ? [...formData.image_specs.allowed_formats, fmt]
+                                                : formData.image_specs.allowed_formats.filter(f => f !== fmt);
+                                            setFormData({ ...formData, image_specs: { ...formData.image_specs, allowed_formats: newFormats } });
+                                        }}
+                                    />
+                                    {fmt.toUpperCase()}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 6: Review */}
+            {currentStep === 6 && (
                 <div className="step-content active">
                     <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Review & Confirm</h2>
                     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
@@ -366,6 +466,12 @@ const OnboardClient = () => {
                                 ))}
                             </ul>
                         </div>
+                        <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+                            <h4 style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Image Specs</h4>
+                            <p style={{ fontSize: '0.9rem' }}>
+                                Max {formData.image_specs.max_size}MB, {formData.image_specs.min_width}x{formData.image_specs.min_height}px, {formData.image_specs.allowed_formats.join(', ').toUpperCase()}
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
@@ -373,7 +479,9 @@ const OnboardClient = () => {
             {/* Footer Control */}
             <div className="wizard-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => navigate('/clients')} style={{ marginRight: 'auto' }}>Cancel</button>
-                <button type="button" className="btn btn-secondary" onClick={handlePrev} disabled={currentStep === 1 || submitting}>Back</button>
+                {currentStep > 1 && (
+                    <button type="button" className="btn btn-secondary" onClick={handlePrev} disabled={submitting}>Back</button>
+                )}
                 <button type="button" className="btn btn-primary" onClick={handleNext} disabled={submitting}>
                     {submitting ? <CircleNotch className="spin" /> : (currentStep === totalSteps ? 'Confirm Onboarding' : 'Next Step')}
                 </button>
@@ -479,6 +587,20 @@ const OnboardClient = () => {
                     </div>
                 </div>
             )}
+
+            <Modal
+                show={customModal.show}
+                onClose={closeCustomModal}
+                title={customModal.title}
+                type={customModal.type}
+                footer={
+                    <button className="btn btn-primary" onClick={closeCustomModal} style={{ minWidth: '100px', justifyContent: 'center' }}>OK</button>
+                }
+            >
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                    {customModal.message}
+                </p>
+            </Modal>
 
             <style>{`
                 .spin {

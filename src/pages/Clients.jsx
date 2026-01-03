@@ -1,13 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MagnifyingGlass, Funnel, Plus, CircleNotch } from '@phosphor-icons/react';
+import { MagnifyingGlass, Funnel, Plus, CircleNotch, Trash, Pause, Play } from '@phosphor-icons/react';
 import { api } from '../services/api';
+import Modal from '../components/common/Modal';
 
 const Clients = () => {
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ search: '', status: '' });
+
+    // Custom Modal State
+    const [customModal, setCustomModal] = useState({
+        show: false,
+        type: 'info',
+        title: '',
+        message: '',
+        onConfirm: null
+    });
+
+    const closeCustomModal = () => setCustomModal({ ...customModal, show: false });
 
     useEffect(() => {
         fetchClients();
@@ -33,6 +45,73 @@ const Clients = () => {
         const matchesStatus = !filter.status || client.status === filter.status;
         return matchesSearch && matchesStatus;
     });
+
+    const getLocationCount = (client) => {
+        // API returns 'locations' as a number (count) in the list view
+        if (typeof client.locations === 'number') return client.locations;
+
+        // Fallback checks
+        if (typeof client.location_count === 'number') return client.location_count;
+        if (typeof client.locations_count === 'number') return client.locations_count;
+        if (Array.isArray(client.locations)) return client.locations.length;
+
+        return 0;
+    };
+
+    const handleStatusToggle = (client) => {
+        const newStatus = client.status === 'suspended' ? 'active' : 'suspended';
+        const action = client.status === 'suspended' ? 'Activate' : 'Suspend';
+
+        setCustomModal({
+            show: true,
+            type: 'confirm',
+            title: `${action} Client`,
+            message: `Are you sure you want to ${action.toLowerCase()} ${client.display_name}?`,
+            onConfirm: async () => {
+                closeCustomModal();
+                try {
+                    const result = await api.clients.updateStatus(client.id, newStatus);
+                    if (result.success) {
+                        fetchClients();
+                    }
+                } catch (error) {
+                    console.error('Failed to update status', error);
+                    setCustomModal({
+                        show: true,
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to update status: ' + error.message
+                    });
+                }
+            }
+        });
+    };
+
+    const handleDelete = (client) => {
+        setCustomModal({
+            show: true,
+            type: 'confirm',
+            title: 'Delete Client',
+            message: `Are you sure you want to delete ${client.display_name}? This action cannot be undone.`,
+            onConfirm: async () => {
+                closeCustomModal();
+                try {
+                    const result = await api.clients.delete(client.id);
+                    if (result.success) {
+                        fetchClients();
+                    }
+                } catch (error) {
+                    console.error('Failed to delete client', error);
+                    setCustomModal({
+                        show: true,
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to delete client: ' + error.message
+                    });
+                }
+            }
+        });
+    };
 
     const clearFilters = () => setFilter({ search: '', status: '' });
 
@@ -76,6 +155,7 @@ const Clients = () => {
                     >
                         <option value="">All Statuses</option>
                         <option value="active">Active</option>
+                        <option value="suspended">Suspended</option>
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
@@ -121,17 +201,33 @@ const Clients = () => {
                                         <td><span style={{ fontWeight: 600 }}>{client.display_name}</span></td>
                                         <td><code style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{client.api_client_id}</code></td>
                                         <td>
-                                            {Array.isArray(client.locations) ? client.locations.length : 0} Locations
+                                            {getLocationCount(client)} Locations
                                         </td>
                                         <td>
-                                            <span className={`status-capsule ${client.status === 'active' ? 'status-active' : 'status-neutral'}`}>
+                                            <span className={`status-capsule ${client.status === 'active' ? 'status-active' : client.status === 'suspended' ? 'status-warning' : 'status-neutral'}`}>
                                                 {client.status}
                                             </span>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
-                                            <Link to={`/clients/${client.id}`} className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px', textDecoration: 'none', display: 'inline-block' }}>
+                                            <Link to={`/clients/${client.id}`} className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px', textDecoration: 'none', display: 'inline-block', marginRight: '8px' }}>
                                                 Manage
                                             </Link>
+                                            <button
+                                                className="icon-btn"
+                                                title={client.status === 'suspended' ? 'Activate' : 'Suspend'}
+                                                onClick={() => handleStatusToggle(client)}
+                                                style={{ marginRight: '4px' }}
+                                            >
+                                                {client.status === 'suspended' ? <Play /> : <Pause />}
+                                            </button>
+                                            <button
+                                                className="icon-btn"
+                                                title="Delete"
+                                                style={{ color: 'var(--danger)' }}
+                                                onClick={() => handleDelete(client)}
+                                            >
+                                                <Trash />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -140,6 +236,28 @@ const Clients = () => {
                     </table>
                 )}
             </div>
+
+            <Modal
+                show={customModal.show}
+                onClose={closeCustomModal}
+                title={customModal.title}
+                type={customModal.type}
+                footer={
+                    customModal.type === 'confirm' ? (
+                        <>
+                            <button className="btn btn-secondary" onClick={closeCustomModal}>Cancel</button>
+                            <button className="btn btn-primary" onClick={customModal.onConfirm}>Confirm</button>
+                        </>
+                    ) : (
+                        <button className="btn btn-primary" onClick={closeCustomModal} style={{ minWidth: '100px', justifyContent: 'center' }}>OK</button>
+                    )
+                }
+            >
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                    {customModal.message}
+                </p>
+            </Modal>
+
             <style>{`
                 .spin {
                     animation: spin 1s linear infinite;

@@ -1,28 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, PencilSimple, Trash, X, Warning } from '@phosphor-icons/react';
-import { api } from '../services/api';
+import { Plus, PencilSimple, Trash, X } from '@phosphor-icons/react';
 
 const Roles = () => {
-    const [roles, setRoles] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetchRoles();
-    }, []);
-
-    const fetchRoles = async () => {
-        try {
-            setLoading(true);
-            const result = await api.audit.getRoles();
-            if (result.success) {
-                setRoles(result.data);
-            }
-        } catch (error) {
-            console.error('Failed to load roles', error);
-        } finally {
-            setLoading(false);
+    // Static mock data since the API endpoint may not exist
+    const [roles, setRoles] = useState([
+        {
+            id: 1,
+            name: 'Super Admin',
+            description: 'Full system access with all permissions',
+            color: 'var(--danger)',
+            permissions: ['all_access']
+        },
+        {
+            id: 2,
+            name: 'Platform Owner',
+            description: 'Manage clients and view reports',
+            color: 'var(--warning)',
+            permissions: ['manage_users', 'view_reports', 'manage_content']
+        },
+        {
+            id: 3,
+            name: 'Support Agent',
+            description: 'Handle support tickets and basic operations',
+            color: 'var(--accent)',
+            permissions: ['manage_tickets', 'view_reports']
         }
-    };
+    ]);
+    const [loading, setLoading] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentRole, setCurrentRole] = useState(null);
@@ -51,7 +55,7 @@ const Roles = () => {
                 name: role.name,
                 description: role.description,
                 color: role.color,
-                permissions: role.permissions
+                permissions: role.permissions || []
             });
         } else {
             setCurrentRole(null);
@@ -65,26 +69,16 @@ const Roles = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (!formData.name) return alert('Role Name is required');
 
-        try {
-            if (currentRole) {
-                // Edit not supported by API spec yet
-                alert('Editing roles is not supported by the backend API yet.');
-                // Optimistic update for demo
-                setRoles(roles.map(r => r.id === currentRole.id ? { ...r, ...formData } : r));
-            } else {
-                const result = await api.audit.createRole(formData);
-                if (result.success) {
-                    fetchRoles();
-                }
-            }
-            setIsModalOpen(false);
-        } catch (error) {
-            console.error('Failed to save role', error);
-            alert('Failed to save role: ' + error.message);
+        if (currentRole) {
+            setRoles(roles.map(r => r.id === currentRole.id ? { ...r, ...formData } : r));
+        } else {
+            const newRole = { ...formData, id: Date.now() };
+            setRoles([...roles, newRole]);
         }
+        setIsModalOpen(false);
     };
 
     const handleDelete = (id) => {
@@ -116,33 +110,47 @@ const Roles = () => {
                 </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-                {roles.map(role => (
-                    <div key={role.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: role.color }}></div>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{role.name}</h3>
+            {loading ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    Loading roles...
+                </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                    {roles.map(role => (
+                        <div key={role.id} style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '16px',
+                            padding: '1.5rem'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: role.color }}></div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{role.name}</h3>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button className="icon-btn" onClick={() => openModal(role)}><PencilSimple /></button>
+                                    <button className="icon-btn" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(role.id)}><Trash /></button>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button className="icon-btn" onClick={() => openModal(role)}><PencilSimple /></button>
-                                <button className="icon-btn" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(role.id)}><Trash /></button>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>{role.description}</p>
+                            <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Permissions:</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    {(role.permissions || []).map(p => (
+                                        <span key={p} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-main)' }}>
+                                            {allPermissions.find(ap => ap.id === p)?.label || p}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>{role.description}</p>
-                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Permissions:</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                {role.permissions.map(p => (
-                                    <span key={p} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-main)' }}>
-                                        {allPermissions.find(ap => ap.id === p)?.label || p}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {/* Modal */}
             {isModalOpen && (

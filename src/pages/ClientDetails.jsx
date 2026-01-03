@@ -26,6 +26,18 @@ const ClientDetails = () => {
                 if (result.success) {
                     const data = result.data;
                     // Map API data to component state
+                    // Parse config if it's a string
+                    let apiConfig = {};
+                    try {
+                        if (data.api_client?.config) {
+                            apiConfig = typeof data.api_client.config === 'string'
+                                ? JSON.parse(data.api_client.config)
+                                : data.api_client.config;
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse api_client config", e);
+                    }
+
                     const mappedClient = {
                         id: data.id,
                         name: data.display_name,
@@ -34,8 +46,19 @@ const ClientDetails = () => {
                         tier: data.api_client?.tier_id === 1 ? 'Starter' : data.api_client?.tier_id === 2 ? 'Growth' : data.api_client?.tier_id === 3 ? 'Enterprise' : 'Custom',
                         locations: data.locations || [],
                         kiosks: [], // Not provided by this endpoint yet
-                        api_client: data.api_client,
-                        details: data.details || {} // Ensure details object exists
+                        api_client: {
+                            ...data.api_client,
+                            ...apiConfig // Merge parsed config (daily_quota, etc.) into api_client
+                        },
+                        timezone: data.timezone,
+                        details: {
+                            hq_address: data.hq_address || {},
+                            image_specs: data.image_specs || {},
+                            billing: {
+                                contact: data.hq_address?.billing_contact || '',
+                                email: data.contact_email
+                            }
+                        }
                     };
                     setClient(mappedClient);
                 } else {

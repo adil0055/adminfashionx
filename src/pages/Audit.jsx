@@ -18,8 +18,11 @@ const Audit = () => {
                     // If API returns simple objects, we might need to map statusClass etc.
                     const mappedLogs = result.data.map(log => ({
                         ...log,
-                        statusClass: log.status === 'Success' ? 'status-active' : log.status === 'Pending Approval' ? 'status-warning' : 'status-inactive',
-                        avatar: log.user ? log.user.charAt(0).toUpperCase() : 'U'
+                        user: log.admin || 'Unknown',
+                        time: new Date(log.created_at).toLocaleString(),
+                        status: log.status || 'Success', // Default to Success if missing in this specific response format
+                        statusClass: (log.status || 'Success') === 'Success' ? 'status-active' : 'status-inactive',
+                        avatar: (log.admin || 'U').charAt(0).toUpperCase()
                     }));
                     setLogs(mappedLogs);
                 }

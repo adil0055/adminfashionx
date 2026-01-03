@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MagnifyingGlass, X, PencilSimple, Trash } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, X, PencilSimple, Trash, ArrowSquareOut } from '@phosphor-icons/react';
 
 import { api } from '../services/api';
+import Modal from '../components/common/Modal';
 
 const KiosksStock = () => {
     const [stockKiosks, setStockKiosks] = useState([]);
@@ -10,16 +11,39 @@ const KiosksStock = () => {
 
     // Filters
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
     const [locationFilter, setLocationFilter] = useState('');
 
-    // Modal
+    // Add Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newKiosk, setNewKiosk] = useState({
         id: '',
-        location: '',
-        status: 'In Stock'
+        location: ''
     });
+
+    // Edit Modal
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editKiosk, setEditKiosk] = useState(null);
+    const [editWarehouse, setEditWarehouse] = useState('');
+    const [editLoading, setEditLoading] = useState(false);
+
+    // Assign Modal
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assignKiosk, setAssignKiosk] = useState(null);
+    const [clients, setClients] = useState([]);
+    const [clientLocations, setClientLocations] = useState([]); // Store locations for selected client
+    const [assignData, setAssignData] = useState({ clientId: '', locationId: '' });
+    const [assignLoading, setAssignLoading] = useState(false);
+
+    // Custom Modal State
+    const [customModal, setCustomModal] = useState({
+        show: false,
+        type: 'info',
+        title: '',
+        message: '',
+        onConfirm: null
+    });
+
+    const closeCustomModal = () => setCustomModal({ ...customModal, show: false });
 
     useEffect(() => {
         fetchStock();
@@ -44,90 +68,181 @@ const KiosksStock = () => {
 
         if (search) {
             const lowerSearch = search.toLowerCase();
-            result = result.filter(k => k.id.toLowerCase().includes(lowerSearch));
-        }
-
-        if (statusFilter) {
-            result = result.filter(k => k.status === statusFilter);
+            result = result.filter(k =>
+                (k.kiosk_id && k.kiosk_id.toLowerCase().includes(lowerSearch)) ||
+                (k.id && k.id.toString().includes(lowerSearch))
+            );
         }
 
         if (locationFilter) {
-            result = result.filter(k => k.location && k.location.toLowerCase().includes(locationFilter.toLowerCase()));
+            result = result.filter(k => k.warehouse && k.warehouse.toLowerCase().includes(locationFilter.toLowerCase()));
         }
 
         setFilteredKiosks(result);
-    }, [search, statusFilter, locationFilter, stockKiosks]);
+    }, [search, locationFilter, stockKiosks]);
 
     const handleAddKiosk = async () => {
-        if (newKiosk.isEdit) {
-            // Edit not supported by API spec yet
-            alert('Editing stock kiosks is not supported by the backend API yet.');
-        } else {
-            // Add new
-            try {
-                const result = await api.kiosks.addStock({
-                    kiosk_id: newKiosk.id,
-                    warehouse: newKiosk.location
+        try {
+            const result = await api.kiosks.addStock({
+                kiosk_id: newKiosk.id,
+                warehouse: newKiosk.location
+            });
+            if (result.success) {
+                fetchStock();
+                setIsModalOpen(false);
+                setNewKiosk({ id: '', location: '' });
+                setCustomModal({
+                    show: true,
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Kiosk added to stock successfully.'
                 });
-                if (result.success) {
-                    fetchStock();
-                    setIsModalOpen(false);
-                    setNewKiosk({ id: '', location: '', status: 'In Stock' });
-                }
-            } catch (error) {
-                console.error('Failed to add kiosk', error);
-                alert('Failed to add kiosk: ' + error.message);
             }
+        } catch (error) {
+            console.error('Failed to add kiosk', error);
+            setCustomModal({
+                show: true,
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to add kiosk: ' + error.message
+            });
         }
     };
 
-    const handleEdit = (kiosk) => {
-        setNewKiosk({ ...kiosk, isEdit: true });
-        setIsModalOpen(true);
+    const handleEditClick = (kiosk) => {
+        setEditKiosk(kiosk);
+        setEditWarehouse(kiosk.warehouse || '');
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditSubmit = async () => {
+        if (!editWarehouse.trim()) {
+            setCustomModal({
+                show: true,
+                type: 'info',
+                title: 'Validation Error',
+                message: 'Warehouse location is required'
+            });
+            return;
+        }
+
+        try {
+            setEditLoading(true);
+            const result = await api.kiosks.updateStock(editKiosk.id, {
+                warehouse: editWarehouse
+            });
+
+            if (result.success) {
+                setCustomModal({
+                    show: true,
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Kiosk details updated successfully'
+                });
+                setIsEditModalOpen(false);
+                fetchStock();
+            }
+        } catch (error) {
+            console.error('Failed to update kiosk', error);
+            setCustomModal({
+                show: true,
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to update kiosk: ' + (error.message || 'Unknown error')
+            });
+        } finally {
+            setEditLoading(false);
+        }
     };
 
     const handleDelete = (id) => {
-        if (window.confirm('Are you sure you want to delete this kiosk from stock?')) {
-            const updatedStock = stockKiosks.filter(k => k.id !== id);
-            setStockKiosks(updatedStock);
-            localStorage.setItem('nexus_stock_kiosks', JSON.stringify(updatedStock));
-        }
+        setCustomModal({
+            show: true,
+            type: 'confirm',
+            title: 'Delete Kiosk',
+            message: 'Are you sure you want to delete this kiosk from stock? This action cannot be undone.',
+            onConfirm: async () => {
+                closeCustomModal();
+                try {
+                    const result = await api.kiosks.deleteStock(id);
+                    if (result.success) {
+                        setCustomModal({
+                            show: true,
+                            type: 'success',
+                            title: 'Success',
+                            message: 'Kiosk deleted successfully'
+                        });
+                        fetchStock();
+                    }
+                } catch (error) {
+                    console.error('Failed to delete kiosk', error);
+                    setCustomModal({
+                        show: true,
+                        type: 'error',
+                        title: 'Error',
+                        message: 'Failed to delete kiosk: ' + error.message
+                    });
+                }
+            }
+        });
     };
-
-    const clearFilters = () => {
-        setSearch('');
-        setStatusFilter('');
-        setLocationFilter('');
-    };
-
-    // Assign Modal
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [assignKiosk, setAssignKiosk] = useState(null);
-    const [clients, setClients] = useState([]);
-    const [assignData, setAssignData] = useState({ clientId: '', locationId: '' });
-    const [assignLoading, setAssignLoading] = useState(false);
 
     const openAssignModal = async (kiosk) => {
         setAssignKiosk(kiosk);
         setAssignData({ clientId: '', locationId: '' });
+        setClientLocations([]); // Reset locations
         setIsAssignModalOpen(true);
 
         // Fetch clients if not loaded
         if (clients.length === 0) {
             try {
                 const result = await api.clients.list();
-                if (result.success) {
+                if (result.success && Array.isArray(result.data)) {
                     setClients(result.data);
                 }
             } catch (error) {
                 console.error('Failed to load clients', error);
+                setCustomModal({
+                    show: true,
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to load clients: ' + error.message
+                });
             }
         }
     };
 
+    // Fetch locations when a client is selected
+    useEffect(() => {
+        const fetchLocations = async () => {
+            if (!assignData.clientId) {
+                setClientLocations([]);
+                return;
+            }
+
+            try {
+                const result = await api.clients.getDetails(assignData.clientId);
+                if (result.success && result.data && Array.isArray(result.data.locations)) {
+                    setClientLocations(result.data.locations);
+                } else {
+                    setClientLocations([]);
+                }
+            } catch (error) {
+                console.error('Failed to fetch client locations', error);
+            }
+        };
+
+        fetchLocations();
+    }, [assignData.clientId]);
+
     const handleAssignSubmit = async () => {
         if (!assignData.clientId || !assignData.locationId) {
-            alert('Please select a client and location');
+            setCustomModal({
+                show: true,
+                type: 'info',
+                title: 'Selection Required',
+                message: 'Please select a client and location'
+            });
             return;
         }
 
@@ -139,22 +254,31 @@ const KiosksStock = () => {
             });
 
             if (result.success) {
-                alert('Kiosk assigned successfully');
+                setCustomModal({
+                    show: true,
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Kiosk assigned successfully'
+                });
                 setIsAssignModalOpen(false);
                 fetchStock(); // Refresh list
             }
         } catch (error) {
             console.error('Failed to assign kiosk', error);
-            alert('Failed to assign kiosk: ' + error.message);
+            setCustomModal({
+                show: true,
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to assign kiosk: ' + (error.message || 'Unknown error')
+            });
         } finally {
             setAssignLoading(false);
         }
     };
 
-    // Helper to get locations for selected client
-    const getClientLocations = () => {
-        const client = clients.find(c => c.id == assignData.clientId);
-        return client ? client.locations || [] : [];
+    const clearFilters = () => {
+        setSearch('');
+        setLocationFilter('');
     };
 
     return (
@@ -166,8 +290,11 @@ const KiosksStock = () => {
                         Manage unassigned kiosks in inventory. Add new stock, update status, and assign to clients.
                     </p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-                    <Plus /> Add Stock Kiosk
+                <button className="btn btn-primary" onClick={() => {
+                    setNewKiosk({ id: '', location: '' });
+                    setIsModalOpen(true);
+                }}>
+                    <Plus weight="bold" /> Add New Kiosk
                 </button>
             </div>
 
@@ -183,21 +310,11 @@ const KiosksStock = () => {
                     />
                 </div>
                 <div className="filter-group">
-                    <label>Status:</label>
-                    <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                        <option value="">All</option>
-                        <option value="In Stock">In Stock</option>
-                        <option value="Reserved">Reserved</option>
-                        <option value="RMA / Repair">RMA / Repair</option>
-                        <option value="Retired">Retired</option>
-                    </select>
-                </div>
-                <div className="filter-group">
-                    <label>Location:</label>
+                    <label>Warehouse:</label>
                     <input
                         type="text"
                         className="filter-input"
-                        placeholder="Filter by location..."
+                        placeholder="Filter by warehouse..."
                         style={{ minWidth: '180px' }}
                         value={locationFilter}
                         onChange={(e) => setLocationFilter(e.target.value)}
@@ -217,41 +334,51 @@ const KiosksStock = () => {
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th>Kiosk ID</th>
-                            <th>Location</th>
+                            <th>Kiosk ID (Hardware)</th>
+                            <th>Warehouse / Location</th>
                             <th>Status</th>
-                            <th>Last Updated</th>
                             <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredKiosks.length > 0 ? (
+                        {loading ? (
+                            <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                    Loading stock...
+                                </td>
+                            </tr>
+                        ) : filteredKiosks.length > 0 ? (
                             filteredKiosks.map((kiosk, idx) => (
                                 <tr key={idx}>
-                                    <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{kiosk.id}</td>
-                                    <td>{kiosk.location || '-'}</td>
+                                    <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{kiosk.kiosk_id || kiosk.id}</td>
+                                    <td>{kiosk.warehouse || '-'}</td>
                                     <td>
-                                        <span className={`status-capsule ${kiosk.status === 'In Stock' ? 'status-active' :
-                                            kiosk.status === 'Reserved' ? 'status-warning' : 'status-inactive'
-                                            }`}>
-                                            {kiosk.status}
+                                        <span className="status-capsule status-neutral">
+                                            In Stock
                                         </span>
-                                    </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                        {new Date(kiosk.lastUpdated).toLocaleString()}
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <button
-                                            className="btn btn-secondary"
+                                            className="btn btn-primary"
                                             style={{ fontSize: '0.75rem', padding: '2px 8px', marginRight: '8px' }}
                                             onClick={() => openAssignModal(kiosk)}
                                         >
-                                            Assign
+                                            Assign <ArrowSquareOut style={{ marginLeft: '4px' }} />
                                         </button>
-                                        <button className="icon-btn" title="Edit" onClick={() => handleEdit(kiosk)}>
+                                        <button
+                                            className="icon-btn"
+                                            title="Edit Details"
+                                            onClick={() => handleEditClick(kiosk)}
+                                            style={{ marginRight: '4px' }}
+                                        >
                                             <PencilSimple />
                                         </button>
-                                        <button className="icon-btn" title="Delete" style={{ color: 'var(--danger)' }} onClick={() => handleDelete(kiosk.id)}>
+                                        <button
+                                            className="icon-btn"
+                                            title="Delete"
+                                            onClick={() => handleDelete(kiosk.id)}
+                                            style={{ color: 'var(--danger)' }}
+                                        >
                                             <Trash />
                                         </button>
                                     </td>
@@ -259,7 +386,7 @@ const KiosksStock = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                                     No stock kiosks found.
                                 </td>
                             </tr>
@@ -268,59 +395,79 @@ const KiosksStock = () => {
                 </table>
             </div>
 
-            {/* Add/Edit Kiosk Modal */}
+            {/* Add Kiosk Modal */}
             {isModalOpen && (
                 <div className="modal-overlay active">
-                    <div className="modal-content" style={{ width: '500px' }}>
+                    <div className="modal-content">
                         <div className="modal-header">
-                            <h3 className="modal-title">{newKiosk.isEdit ? 'Edit Stock Kiosk' : 'Add New Stock Kiosk'}</h3>
+                            <h3 className="modal-title">Add New Kiosk</h3>
                             <button className="close-modal" onClick={() => setIsModalOpen(false)}><X /></button>
                         </div>
                         <div className="modal-body">
                             <div className="form-group">
-                                <label className="form-label">Kiosk ID (Serial Number)</label>
+                                <label className="form-label">Kiosk ID (Hardware ID)</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. KSK-9942"
+                                    placeholder="e.g. KSK-001"
                                     value={newKiosk.id}
                                     onChange={(e) => setNewKiosk({ ...newKiosk, id: e.target.value })}
-                                    disabled={newKiosk.isEdit}
                                 />
-                                {!newKiosk.isEdit && (
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                        Leave blank to auto-generate a random ID.
-                                    </p>
-                                )}
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Location</label>
+                                <label className="form-label">Warehouse Location</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="e.g. Warehouse A"
+                                    placeholder="e.g. Austin Hub"
                                     value={newKiosk.location}
                                     onChange={(e) => setNewKiosk({ ...newKiosk, location: e.target.value })}
                                 />
                             </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAddKiosk}>Add Kiosk</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Kiosk Modal */}
+            {isEditModalOpen && (
+                <div className="modal-overlay active">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h3 className="modal-title">Edit Kiosk Details</h3>
+                            <button className="close-modal" onClick={() => setIsEditModalOpen(false)}><X /></button>
+                        </div>
+                        <div className="modal-body">
                             <div className="form-group">
-                                <label className="form-label">Status</label>
-                                <select
+                                <label className="form-label">Kiosk ID (Hardware ID)</label>
+                                <input
+                                    type="text"
                                     className="form-input"
-                                    value={newKiosk.status}
-                                    onChange={(e) => setNewKiosk({ ...newKiosk, status: e.target.value })}
-                                >
-                                    <option value="In Stock">In Stock</option>
-                                    <option value="Reserved">Reserved</option>
-                                    <option value="RMA / Repair">RMA / Repair</option>
-                                    <option value="Retired">Retired</option>
-                                </select>
+                                    value={editKiosk?.kiosk_id || editKiosk?.id || ''}
+                                    disabled
+                                    style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                                />
+                                <small style={{ color: 'var(--text-muted)' }}>Hardware ID cannot be changed.</small>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Warehouse Location</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g. Austin Hub"
+                                    value={editWarehouse}
+                                    onChange={(e) => setEditWarehouse(e.target.value)}
+                                />
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                            <button type="button" className="btn btn-primary" onClick={handleAddKiosk}>
-                                {newKiosk.isEdit ? 'Save Changes' : 'Add Kiosk'}
+                            <button className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleEditSubmit} disabled={editLoading}>
+                                {editLoading ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </div>
@@ -330,16 +477,16 @@ const KiosksStock = () => {
             {/* Assign Modal */}
             {isAssignModalOpen && (
                 <div className="modal-overlay active">
-                    <div className="modal-content" style={{ width: '500px' }}>
+                    <div className="modal-content">
                         <div className="modal-header">
-                            <h3 className="modal-title">Assign Kiosk {assignKiosk?.id}</h3>
+                            <h3 className="modal-title">Assign Kiosk {assignKiosk?.kiosk_id || assignKiosk?.id}</h3>
                             <button className="close-modal" onClick={() => setIsAssignModalOpen(false)}><X /></button>
                         </div>
                         <div className="modal-body">
                             <div className="form-group">
                                 <label className="form-label">Select Client</label>
                                 <select
-                                    className="form-input"
+                                    className="form-select"
                                     value={assignData.clientId}
                                     onChange={(e) => setAssignData({ ...assignData, clientId: e.target.value, locationId: '' })}
                                 >
@@ -352,27 +499,48 @@ const KiosksStock = () => {
                             <div className="form-group">
                                 <label className="form-label">Select Location</label>
                                 <select
-                                    className="form-input"
+                                    className="form-select"
                                     value={assignData.locationId}
                                     onChange={(e) => setAssignData({ ...assignData, locationId: e.target.value })}
                                     disabled={!assignData.clientId}
                                 >
                                     <option value="">-- Select Location --</option>
-                                    {getClientLocations().map(loc => (
+                                    {clientLocations.map(loc => (
                                         <option key={loc.id} value={loc.id}>{loc.name}</option>
                                     ))}
                                 </select>
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={() => setIsAssignModalOpen(false)}>Cancel</button>
-                            <button type="button" className="btn btn-primary" onClick={handleAssignSubmit} disabled={assignLoading}>
+                            <button className="btn btn-secondary" onClick={() => setIsAssignModalOpen(false)}>Cancel</button>
+                            <button className="btn btn-primary" onClick={handleAssignSubmit} disabled={assignLoading}>
                                 {assignLoading ? 'Assigning...' : 'Assign Kiosk'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            <Modal
+                show={customModal.show}
+                onClose={closeCustomModal}
+                title={customModal.title}
+                type={customModal.type}
+                footer={
+                    customModal.type === 'confirm' ? (
+                        <>
+                            <button className="btn btn-secondary" onClick={closeCustomModal}>Cancel</button>
+                            <button className="btn btn-primary" onClick={customModal.onConfirm}>Confirm</button>
+                        </>
+                    ) : (
+                        <button className="btn btn-primary" onClick={closeCustomModal} style={{ minWidth: '100px', justifyContent: 'center' }}>OK</button>
+                    )
+                }
+            >
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                    {customModal.message}
+                </p>
+            </Modal>
         </>
     );
 };

@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
                         const { user } = result.data;
                         // Normalize role
                         let role = user.role;
-                        if (role === 'Super Admin') role = 'SUPER_ADMIN';
+                        if (role === 'Super Admin' || role === 'Admin' || role === 'admin') role = 'SUPER_ADMIN';
                         else if (role === 'Platform Owner') role = 'PLATFORM_OWNER';
 
                         const appUser = {
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
 
                 // Normalize role to match RBAC constants
                 let role = user.role;
-                if (role === 'Super Admin') role = 'SUPER_ADMIN';
+                if (role === 'Super Admin' || role === 'Admin' || role === 'admin') role = 'SUPER_ADMIN';
                 else if (role === 'Platform Owner') role = 'PLATFORM_OWNER';
 
                 const appUser = {

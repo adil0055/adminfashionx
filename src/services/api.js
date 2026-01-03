@@ -76,6 +76,17 @@ export const api = {
         }),
         regenerateSecret: (clientId) => request(`/clients/${clientId}/regenerate-secret`, {
             method: 'POST'
+        }),
+        updateStatus: (id, status) => request(`/clients/${id}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status })
+        }),
+        delete: (id) => request(`/clients/${id}`, {
+            method: 'DELETE'
+        }),
+        update: (id, data) => request(`/clients/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
         })
     },
     kiosks: {
@@ -91,7 +102,35 @@ export const api = {
         }),
         unassign: (kioskId) => request(`/kiosks/${kioskId}/assign`, {
             method: 'DELETE'
+        }),
+        updateStatus: (kioskId, status) => request(`/kiosks/${kioskId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status })
+        }),
+        updateStock: (id, data) => request(`/kiosks/stock/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        deleteStock: (id) => request(`/kiosks/stock/${id}`, {
+            method: 'DELETE'
         })
+    },
+    users: {
+        list: () => request('/users'),
+        create: (data) => request('/users', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        update: (id, data) => request(`/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        delete: (id) => request(`/users/${id}`, {
+            method: 'DELETE'
+        })
+    },
+    roles: {
+        list: () => request('/roles')
     },
     config: {
         listTiers: () => request('/config/tiers'),

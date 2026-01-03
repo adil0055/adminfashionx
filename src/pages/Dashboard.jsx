@@ -48,8 +48,11 @@ const Dashboard = () => {
                 if (logsResult.success) {
                     logs = logsResult.data.slice(0, 5).map(log => ({
                         ...log,
-                        statusClass: log.status === 'Success' ? 'status-active' : log.status === 'Pending Approval' ? 'status-warning' : 'status-inactive',
-                        avatar: log.user ? log.user.charAt(0).toUpperCase() : 'U'
+                        user: log.admin || 'Unknown',
+                        time: new Date(log.created_at).toLocaleString(),
+                        status: log.status || 'Success',
+                        statusClass: (log.status || 'Success') === 'Success' ? 'status-active' : 'status-inactive',
+                        avatar: (log.admin || 'U').charAt(0).toUpperCase()
                     }));
                 }
 

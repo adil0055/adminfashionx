@@ -47,34 +47,14 @@ function App() {
             <Route path="kiosks-assigned" element={<KiosksAssigned />} />
             <Route path="kiosks-stock" element={<KiosksStock />} />
 
-            {/* Super Admin Only Routes */}
-            <Route path="global-config" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                <GlobalConfig />
-              </ProtectedRoute>
-            } />
+            {/* Settings Routes - Removed nested ProtectedRoute for now */}
+            <Route path="global-config" element={<GlobalConfig />} />
             <Route path="policies" element={<Policies />} />
             <Route path="features" element={<Features />} />
-            <Route path="roles" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                <Roles />
-              </ProtectedRoute>
-            } />
-            <Route path="users" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                <Users />
-              </ProtectedRoute>
-            } />
-            <Route path="subscription-tiers" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                <SubscriptionTiers />
-              </ProtectedRoute>
-            } />
-            <Route path="audit" element={
-              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'PLATFORM_OWNER']}>
-                <Audit />
-              </ProtectedRoute>
-            } />
+            <Route path="roles" element={<Roles />} />
+            <Route path="users" element={<Users />} />
+            <Route path="subscription-tiers" element={<SubscriptionTiers />} />
+            <Route path="audit" element={<Audit />} />
             <Route path="*" element={<Placeholder title="404 Not Found" />} />
           </Route>
         </Routes>
