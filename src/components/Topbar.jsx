@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Bell, Gear, Circle } from '@phosphor-icons/react';
+import { Bell, Gear, Circle, Heartbeat } from '@phosphor-icons/react';
+import { api } from '../services/api';
 
 const Topbar = () => {
     const location = useLocation();
@@ -21,6 +22,39 @@ const Topbar = () => {
     };
 
     const [showNotifications, setShowNotifications] = React.useState(false);
+
+    // System Health Status
+    const [healthStatus, setHealthStatus] = React.useState('unknown'); // healthy, degraded, unhealthy, unknown
+
+    React.useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                // Use the lightweight diagnostic check (or we could assume a lighter endpoint exists, but per instructions we use the same)
+                const result = await api.health.diagnostic();
+                if (result.success && result.data?.status) {
+                    setHealthStatus(result.data.status);
+                } else {
+                    setHealthStatus('unhealthy');
+                }
+            } catch (e) {
+                setHealthStatus('unhealthy');
+            }
+        };
+
+        checkHealth();
+        const interval = setInterval(checkHealth, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, []);
+
+    const getHealthColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'healthy': return 'var(--success)';
+            case 'degraded': return 'var(--warning)';
+            case 'unhealthy': return 'var(--danger)';
+            default: return 'var(--text-muted)';
+        }
+    };
+
 
     return (
         <header className="top-bar">
@@ -57,6 +91,14 @@ const Topbar = () => {
                 <div className="env-badge production">
                     <Circle weight="fill" /> Production
                 </div>
+                <Link to="/system-health" title={`System Status: ${healthStatus}`} style={{ textDecoration: 'none' }}>
+                    <div className="icon-btn" style={{
+                        color: getHealthColor(healthStatus),
+                        backgroundColor: `color-mix(in srgb, ${getHealthColor(healthStatus)} 10%, transparent)`
+                    }}>
+                        <Heartbeat weight="fill" />
+                    </div>
+                </Link>
             </div>
         </header>
     );

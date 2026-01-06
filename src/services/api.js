@@ -63,6 +63,29 @@ export const api = {
         }),
         me: () => request('/auth/me')
     },
+    health: {
+        diagnostic: async () => {
+            try {
+                const response = await fetch('/health/diagnostic');
+                // Even 500s return JSON in this specific endpoint design, so we always try to parse
+                const data = await response.json();
+                return { success: true, data }; // Standardize response format
+            } catch (error) {
+                // If the fetch fails entirely (network error), mock a "down" state for the UI
+                console.error("Health check failed connectivity:", error);
+                return {
+                    success: false,
+                    data: {
+                        status: "unhealthy",
+                        dependencies: {},
+                        integrations: {},
+                        system: {},
+                        error: error.message || "Network unreachable or service error"
+                    }
+                };
+            }
+        }
+    },
     clients: {
         list: () => request('/clients'),
         create: (data) => request('/clients', {

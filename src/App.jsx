@@ -16,6 +16,7 @@ import Users from './pages/Users';
 import Audit from './pages/Audit';
 import SubscriptionTiers from './pages/SubscriptionTiers';
 import LoginPage from './pages/LoginPage';
+import SystemHealth from './pages/SystemHealth';
 
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -55,6 +56,7 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="subscription-tiers" element={<SubscriptionTiers />} />
             <Route path="audit" element={<Audit />} />
+            <Route path="system-health" element={<SystemHealth />} />
             <Route path="*" element={<Placeholder title="404 Not Found" />} />
           </Route>
         </Routes>

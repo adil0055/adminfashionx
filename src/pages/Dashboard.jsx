@@ -28,11 +28,12 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [clientsResult, assignedKiosksResult, stockKiosksResult, logsResult] = await Promise.all([
+                const [clientsResult, assignedKiosksResult, stockKiosksResult, logsResult, healthResult] = await Promise.all([
                     api.clients.list(),
                     api.kiosks.listAssigned(),
                     api.kiosks.listStock(),
-                    api.audit.getLogs()
+                    api.audit.getLogs(),
+                    api.health.diagnostic()
                 ]);
 
                 let activeClients = 0;
@@ -56,11 +57,20 @@ const Dashboard = () => {
                     }));
                 }
 
+                // Parse Health
+                let sysHealth = 'Unknown';
+                if (healthResult.success && healthResult.data?.status) {
+                    const s = healthResult.data.status.toLowerCase();
+                    if (s === 'healthy') sysHealth = '100% (Stable)';
+                    else if (s === 'degraded') sysHealth = 'Degraded';
+                    else sysHealth = 'Critical';
+                }
+
                 setStats({
                     activeClients,
                     totalKiosks,
                     policyViolations: 3, // Mock
-                    systemHealth: '99.9%' // Mock
+                    systemHealth: sysHealth
                 });
                 setRecentLogs(logs);
 
@@ -110,7 +120,7 @@ const Dashboard = () => {
                         -2
                     </div>
                 </div>
-                <div className="stats-card">
+                <Link to="/system-health" className="stats-card" style={{ textDecoration: 'none', color: 'inherit' }}>
                     <div className="stats-header">
                         <span>System Health</span>
                         <Heartbeat weight="fill" />
@@ -120,7 +130,7 @@ const Dashboard = () => {
                         <TrendUp weight="bold" />
                         Stable
                     </div>
-                </div>
+                </Link>
             </div>
 
             <div className="section-header">
