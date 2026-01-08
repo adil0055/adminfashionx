@@ -85,16 +85,7 @@ const SubscriptionTiers = () => {
         try {
             let result;
             if (currentTier) {
-                // Assuming update endpoint exists or we just use create for now as per prompt
-                // The prompt only specified POST /config/tiers
-                // For now, I'll just log that update isn't fully supported by API spec provided
-                console.warn('Update tier API not specified, creating new instead or skipping');
-                // If we want to support update, we'd need an endpoint. 
-                // For this task, I will assume create is the main focus.
-                // But to make the UI work for the user, I'll just create a new one or show error.
-                // Let's assume we can't update for now based on strict prompt.
-                alert('Update tier functionality not available in this demo.');
-                return;
+                result = await api.config.updateTier(currentTier.id, payload);
             } else {
                 result = await api.config.createTier(payload);
             }
@@ -109,9 +100,19 @@ const SubscriptionTiers = () => {
         }
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this tier?')) {
-            setTiers(tiers.filter(t => t.id !== id));
+            try {
+                const result = await api.config.deleteTier(id);
+                if (result.success) {
+                    setTiers(tiers.filter(t => t.id !== id));
+                } else {
+                    alert('Failed to delete tier: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Failed to delete tier', error);
+                alert('Failed to delete tier: ' + error.message);
+            }
         }
     };
 

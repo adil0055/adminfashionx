@@ -88,10 +88,19 @@ export const api = {
     },
     clients: {
         list: () => request('/clients'),
+        /**
+         * Create Client
+         * POST /clients
+         * Body: { display_name, client_type, contact_email, tier_id, timezone, hq_street, ... image_specs }
+         */
         create: (data) => request('/clients', {
             method: 'POST',
             body: JSON.stringify(data)
         }),
+        /**
+         * Client Details
+         * GET /clients/{id}
+         */
         getDetails: (id) => request(`/clients/${id}`),
         addLocation: (clientId, data) => request(`/clients/${clientId}/locations`, {
             method: 'POST',
@@ -107,6 +116,11 @@ export const api = {
         delete: (id) => request(`/clients/${id}`, {
             method: 'DELETE'
         }),
+        /**
+         * Update Client (Unified)
+         * PUT /clients/{id}
+         * Body: { display_name, client_type, tier_id, daily_quota, image_specs, ... }
+         */
         update: (id, data) => request(`/clients/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
@@ -153,21 +167,52 @@ export const api = {
         })
     },
     roles: {
-        list: () => request('/roles')
+        list: () => request('/roles'),
+        create: (data) => request('/roles', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        update: (id, data) => request(`/roles/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        delete: (id) => request(`/roles/${id}`, {
+            method: 'DELETE'
+        })
     },
     config: {
+        /**
+         * List Subscription Tiers
+         * GET /config/tiers
+         */
         listTiers: () => request('/config/tiers'),
+        /**
+         * Create Tier
+         * POST /config/tiers
+         * Body: { name, price_monthly, period, description, features, recommended, color, daily_quota, ... }
+         */
         createTier: (data) => request('/config/tiers', {
             method: 'POST',
             body: JSON.stringify(data)
+        }),
+        /**
+         * Edit Existing Tier
+         * PUT /config/tiers/{id}
+         * Body: { name, price_monthly, daily_quota, features, ... } (Partial update)
+         */
+        updateTier: (id, data) => request(`/config/tiers/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+        /**
+         * Delete Tier
+         * DELETE /config/tiers/{id}
+         */
+        deleteTier: (id) => request(`/config/tiers/${id}`, {
+            method: 'DELETE'
         })
     },
     audit: {
-        getLogs: () => request('/audit-logs'),
-        getRoles: () => request('/roles'),
-        createRole: (data) => request('/roles', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
+        getLogs: () => request('/audit-logs')
     }
 };

@@ -1,23 +1,10 @@
 import React, { useState } from 'react';
-import { CaretDown } from '@phosphor-icons/react';
+
 
 const GeneralTab = ({ client, updateClient }) => {
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         updateClient({ [name]: value });
-    };
-
-    const handleClientTypeChange = (e) => {
-        const { value, checked } = e.target;
-        let types = client.clientTypes || [];
-        if (checked) {
-            types = [...types, value];
-        } else {
-            types = types.filter(t => t !== value);
-        }
-        updateClient({ clientTypes: types });
     };
 
     return (
@@ -35,19 +22,7 @@ const GeneralTab = ({ client, updateClient }) => {
                         required
                     />
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Status</label>
-                    <select
-                        className="form-input"
-                        name="status"
-                        value={client.status || 'Active'}
-                        onChange={handleInputChange}
-                    >
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                        <option value="Suspended">Suspended</option>
-                    </select>
-                </div>
+
                 <div className="form-group">
                     <label className="form-label">Tier</label>
                     <select
@@ -64,38 +39,18 @@ const GeneralTab = ({ client, updateClient }) => {
 
                 {/* Client Types Dropdown */}
                 <div className="form-group">
-                    <label className="form-label">Client Type(s)</label>
-                    <div style={{ position: 'relative' }}>
-                        <div
-                            className="form-input"
-                            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        >
-                            <span style={{ color: (client.clientTypes && client.clientTypes.length) ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                                {(client.clientTypes && client.clientTypes.length) ? client.clientTypes.join(', ') : 'Select client types...'}
-                            </span>
-                            <CaretDown />
-                        </div>
-                        {isDropdownOpen && (
-                            <div style={{
-                                position: 'absolute', top: '100%', left: 0, right: 0,
-                                background: 'var(--bg-panel)', border: '1px solid var(--border-color)',
-                                borderRadius: '8px', marginTop: '4px', zIndex: 100, maxHeight: '250px', overflowY: 'auto'
-                            }}>
-                                {['Retail Brand', 'Online Brand', 'Shopify Plugin', 'Marketplace Seller', 'Hybrid'].map(type => (
-                                    <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            value={type}
-                                            checked={client.clientTypes?.includes(type)}
-                                            onChange={handleClientTypeChange}
-                                        />
-                                        <span>{type}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    <label className="form-label">Client Type</label>
+                    <select
+                        className="form-input"
+                        name="client_type"
+                        value={client.client_type || ''}
+                        onChange={handleInputChange}
+                    >
+                        <option value="">Select Client Type...</option>
+                        <option value="KIOSK">KIOSK (Retail brand)</option>
+                        <option value="API">API (ONLINE Brand)</option>
+                        <option value="HYBRID">Hybrid (RETAIL KIOSK + API)</option>
+                    </select>
                 </div>
 
                 <div className="form-group">

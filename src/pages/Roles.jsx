@@ -1,31 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, PencilSimple, Trash, X } from '@phosphor-icons/react';
+import { api } from '../services/api';
 
 const Roles = () => {
     // Static mock data since the API endpoint may not exist
-    const [roles, setRoles] = useState([
-        {
-            id: 1,
-            name: 'Super Admin',
-            description: 'Full system access with all permissions',
-            color: 'var(--danger)',
-            permissions: ['all_access']
-        },
-        {
-            id: 2,
-            name: 'Platform Owner',
-            description: 'Manage clients and view reports',
-            color: 'var(--warning)',
-            permissions: ['manage_users', 'view_reports', 'manage_content']
-        },
-        {
-            id: 3,
-            name: 'Support Agent',
-            description: 'Handle support tickets and basic operations',
-            color: 'var(--accent)',
-            permissions: ['manage_tickets', 'view_reports']
-        }
-    ]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,6 +15,24 @@ const Roles = () => {
         color: 'var(--success)',
         permissions: []
     });
+
+    useEffect(() => {
+        fetchRoles();
+    }, []);
+
+    const fetchRoles = async () => {
+        try {
+            setLoading(true);
+            const response = await api.roles.list();
+            if (response.success) {
+                setRoles(response.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch roles:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const allPermissions = [
         { id: 'all_access', label: 'Full System Access' },
@@ -69,21 +66,41 @@ const Roles = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formData.name) return alert('Role Name is required');
 
-        if (currentRole) {
-            setRoles(roles.map(r => r.id === currentRole.id ? { ...r, ...formData } : r));
-        } else {
-            const newRole = { ...formData, id: Date.now() };
-            setRoles([...roles, newRole]);
+        try {
+            if (currentRole) {
+                const response = await api.roles.update(currentRole.id, formData);
+                if (response.success) {
+                    setRoles(roles.map(r => r.id === currentRole.id ? response.data : r));
+                    // Or refetch: fetchRoles();
+                }
+            } else {
+                const response = await api.roles.create(formData);
+                if (response.success) {
+                    setRoles([...roles, response.data]);
+                    // Or refetch: fetchRoles();
+                }
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Failed to save role:', error);
+            alert('Failed to save role: ' + (error.message || 'Unknown error'));
         }
-        setIsModalOpen(false);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this role?')) {
-            setRoles(roles.filter(r => r.id !== id));
+            try {
+                const response = await api.roles.delete(id);
+                if (response.success) {
+                    setRoles(roles.filter(r => r.id !== id));
+                }
+            } catch (error) {
+                console.error('Failed to delete role:', error);
+                alert('Failed to delete role: ' + (error.message || 'Unknown error'));
+            }
         }
     };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Rocket, ChartLineUp, Buildings, X, Copy, CheckCircle, CircleNotch } from '@phosphor-icons/react';
@@ -9,6 +9,7 @@ const OnboardClient = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState({
         company_name: '',
+        client_type: '',
         timezone: '',
         hq_street: '',
         hq_city: '',
@@ -17,7 +18,7 @@ const OnboardClient = () => {
         hq_country: '',
         billing_contact: '',
         billing_email: '',
-        tier: 'Growth',
+        tier_id: null,
         locations: [],
         image_specs: {
             max_size: 5,
@@ -49,6 +50,23 @@ const OnboardClient = () => {
     const [submitting, setSubmitting] = useState(false);
     const [createdClient, setCreatedClient] = useState(null); // { secret, api_client_id, id }
     const [showSecretModal, setShowSecretModal] = useState(false);
+    const [tiers, setTiers] = useState([]);
+
+    useEffect(() => {
+        const fetchTiers = async () => {
+            try {
+                const result = await api.config.listTiers();
+                if (result.success && result.data.length > 0) {
+                    setTiers(result.data);
+                    // Set default tier if not set
+                    setFormData(prev => ({ ...prev, tier_id: result.data[0].id }));
+                }
+            } catch (error) {
+                console.error("Failed to fetch tiers", error);
+            }
+        };
+        fetchTiers();
+    }, []);
 
     const totalSteps = 6;
 
@@ -78,15 +96,12 @@ const OnboardClient = () => {
     const submitClient = async () => {
         setSubmitting(true);
         try {
-            // Map Tier to ID (Assumption: 1=Starter, 2=Growth, 3=Enterprise, or just use 1 for now as per prompt)
-            const tierMapping = { 'Starter': 1, 'Growth': 2, 'Enterprise': 3 };
-            const tierId = tierMapping[formData.tier] || 1;
-
             // 1. Create Client
             const createResult = await api.clients.create({
                 display_name: formData.company_name,
                 contact_email: formData.billing_email,
-                tier_id: tierId,
+                tier_id: formData.tier_id,
+                client_type: formData.client_type,
                 timezone: formData.timezone,
                 hq_street: formData.hq_street,
                 hq_city: formData.hq_city,
@@ -217,6 +232,20 @@ const OnboardClient = () => {
                         />
                     </div>
                     <div className="form-group">
+                        <label className="form-label">Client Type</label>
+                        <select
+                            className="form-input"
+                            name="client_type"
+                            value={formData.client_type}
+                            onChange={handleInputChange}
+                        >
+                            <option value="">Select Client Type...</option>
+                            <option value="KIOSK">KIOSK (Retail brand)</option>
+                            <option value="API">API (ONLINE Brand)</option>
+                            <option value="HYBRID">Hybrid (RETAIL KIOSK + API)</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
                         <label className="form-label">Timezone</label>
                         <input
                             className="form-input"
@@ -336,41 +365,37 @@ const OnboardClient = () => {
                 <div className="step-content active">
                     <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Select Subscription Tier</h2>
                     <div className="tier-grid">
-                        {['Starter', 'Growth', 'Enterprise'].map(tier => (
-                            <div
-                                key={tier}
-                                className={`tier-card ${formData.tier === tier ? 'selected' : ''}`}
-                                onClick={() => setFormData(prev => ({ ...prev, tier }))}
-                            >
-                                {tier === 'Starter' && <Rocket className="tier-icon" />}
-                                {tier === 'Growth' && <ChartLineUp className="tier-icon" />}
-                                {tier === 'Enterprise' && <Buildings className="tier-icon" />}
-
-                                <div className="tier-name">{tier}</div>
-                                <div className="tier-price">
-                                    {tier === 'Starter' ? '$299 / mo' : tier === 'Growth' ? '$899 / mo' : 'Custom'}
-                                </div>
-                                <ul className="tier-features">
-                                    {tier === 'Starter' && <>
-                                        <li>Up to 5 Kiosks</li>
-                                        <li>Basic Analytics</li>
-                                        <li>Email Support</li>
-                                    </>}
-                                    {tier === 'Growth' && <>
-                                        <li>Up to 20 Kiosks</li>
-                                        <li>Advanced Analytics</li>
-                                        <li>Priority Support</li>
-                                        <li>Custom Branding</li>
-                                    </>}
-                                    {tier === 'Enterprise' && <>
-                                        <li>Unlimited Kiosks</li>
-                                        <li>Full API Access</li>
-                                        <li>Dedicated Success Manager</li>
-                                        <li>SLA Guarantees</li>
-                                    </>}
-                                </ul>
+                        {tiers.length === 0 ? (
+                            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                                Loading subscription tiers...
                             </div>
-                        ))}
+                        ) : (
+                            tiers.map(tier => (
+                                <div
+                                    key={tier.id}
+                                    className={`tier-card ${formData.tier_id === tier.id ? 'selected' : ''}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, tier_id: tier.id }))}
+                                    style={{ borderColor: formData.tier_id === tier.id ? tier.color || 'var(--primary)' : 'var(--border-color)' }}
+                                >
+                                    <div style={{ color: tier.color || 'var(--text-main)', marginBottom: '1rem' }}>
+                                        {tier.name.includes('Starter') ? <Rocket size={32} /> :
+                                            tier.name.includes('Growth') ? <ChartLineUp size={32} /> :
+                                                tier.name.includes('Enterprise') ? <Buildings size={32} /> :
+                                                    <Rocket size={32} />}
+                                    </div>
+
+                                    <div className="tier-name" style={{ color: tier.color || 'var(--text-main)' }}>{tier.name}</div>
+                                    <div className="tier-price">
+                                        ${tier.price_monthly || tier.price || 0} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/ mo</span>
+                                    </div>
+                                    <ul className="tier-features">
+                                        {(Array.isArray(tier.features) ? tier.features : []).map((feature, idx) => (
+                                            <li key={idx}>{feature}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -440,10 +465,13 @@ const OnboardClient = () => {
                             <div>
                                 <h4 style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Company</h4>
                                 <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>{formData.company_name || '-'}</p>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{formData.client_type || 'No Type Selected'}</p>
                             </div>
                             <div>
                                 <h4 style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Tier</h4>
-                                <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary)' }}>{formData.tier}</p>
+                                <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary)' }}>
+                                    {tiers.find(t => t.id === formData.tier_id)?.name || 'Unknown'}
+                                </p>
                             </div>
                         </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FloppyDisk, Buildings, MapPin, Desktop, Gear, ClockCounterClockwise } from '@phosphor-icons/react';
+import { ArrowLeft, FloppyDisk, Buildings, MapPin, Desktop, Gear, ClockCounterClockwise, CircleNotch } from '@phosphor-icons/react';
+import Modal from '../components/common/Modal';
 
 import GeneralTab from '../components/client-details/GeneralTab';
 import BillingTab from '../components/client-details/BillingTab';
@@ -17,6 +18,10 @@ const ClientDetails = () => {
     const [client, setClient] = useState(null);
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [modal, setModal] = useState({ show: false, type: 'info', title: '', message: '' });
+
+    const closeModal = () => setModal({ ...modal, show: false });
 
     useEffect(() => {
         const fetchClientDetails = async () => {
@@ -41,6 +46,7 @@ const ClientDetails = () => {
                     const mappedClient = {
                         id: data.id,
                         name: data.display_name,
+                        client_type: data.client_type,
                         email: data.contact_email,
                         status: data.api_client?.status || 'Unknown',
                         tier: data.api_client?.tier_id === 1 ? 'Starter' : data.api_client?.tier_id === 2 ? 'Growth' : data.api_client?.tier_id === 3 ? 'Enterprise' : 'Custom',
@@ -75,9 +81,42 @@ const ClientDetails = () => {
         fetchClientDetails();
     }, [id, navigate]);
 
-    const handleSave = () => {
-        // Placeholder for save functionality if needed, or remove if auto-save is preferred
-        alert('Save functionality not implemented for this demo.');
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const tierMapping = { 'Starter': 1, 'Growth': 2, 'Enterprise': 3 };
+            const payload = {
+                display_name: client.name,
+                client_type: client.client_type,
+                contact_email: client.email,
+                status: client.status, // API should handle case-insensitivity or we map if needed
+                timezone: client.timezone,
+                tier_id: tierMapping[client.tier] || client.api_client?.tier_id
+            };
+
+            const result = await api.clients.update(client.id, payload);
+
+            if (result.success) {
+                setModal({
+                    show: true,
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Client details updated successfully.'
+                });
+            } else {
+                throw new Error(result.message || 'Update failed');
+            }
+        } catch (error) {
+            console.error('Failed to save client:', error);
+            setModal({
+                show: true,
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to save changes: ' + error.message
+            });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const updateClientState = (updates) => {
@@ -105,8 +144,9 @@ const ClientDetails = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button className="btn btn-primary" onClick={handleSave}>
-                        <FloppyDisk /> Save Changes
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                        {saving ? <CircleNotch className="spin" /> : <FloppyDisk />}
+                        {saving ? ' Saving...' : ' Save Changes'}
                     </button>
                 </div>
             </div>
@@ -192,6 +232,20 @@ const ClientDetails = () => {
                     <ActivityLogTab client={client} />
                 )}
             </div>
+
+            <Modal
+                show={modal.show}
+                onClose={closeModal}
+                title={modal.title}
+                type={modal.type}
+                footer={<button className="btn btn-primary" onClick={closeModal}>OK</button>}
+            >
+                <p>{modal.message}</p>
+            </Modal>
+            <style>{`
+                .spin { animation: spin 1s linear infinite; }
+                @keyframes spin { 100% { transform: rotate(360deg); } }
+            `}</style>
         </>
     );
 };
