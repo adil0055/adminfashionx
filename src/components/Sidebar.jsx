@@ -8,7 +8,8 @@ import {
     CaretRight,
     Gear,
     Scroll,
-    SignOut
+    SignOut,
+    BookOpen
 } from '@phosphor-icons/react';
 
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +44,10 @@ const Sidebar = () => {
                 <NavLink to="/clients" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <UsersThree />
                     <span>Clients</span>
+                </NavLink>
+                <NavLink to="/catalogues" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <BookOpen />
+                    <span>Catalogues</span>
                 </NavLink>
 
                 <div className="nav-group">

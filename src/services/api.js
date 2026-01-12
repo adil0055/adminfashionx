@@ -212,6 +212,26 @@ export const api = {
             method: 'DELETE'
         })
     },
+    catalogues: {
+        upload: (formData) => request('/catalogues/upload', {
+            method: 'POST',
+            body: formData,
+            // Fetch handles multipart/form-data automatically if we don't set Content-Type header manually
+            // But our request wrapper sets Content-Type: application/json by default.
+            // We need to override headers to let browser set boundary.
+            headers: {
+                'Content-Type': undefined
+            }
+        }),
+        listProducts: (clientId) => request(`/catalogues/client/${clientId}/products`),
+        deleteProduct: (productId) => request(`/catalogues/products/${productId}`, {
+            method: 'DELETE'
+        }),
+        updateProduct: (productId, data) => request(`/catalogues/products/${productId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    },
     audit: {
         getLogs: () => request('/audit-logs')
     }

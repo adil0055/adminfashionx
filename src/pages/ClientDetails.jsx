@@ -43,6 +43,32 @@ const ClientDetails = () => {
                         console.error("Failed to parse api_client config", e);
                     }
 
+                    // Fetch Kiosks
+                    let clientKiosks = [];
+                    try {
+                        const kiosksResult = await api.kiosks.listAssigned();
+                        const allAssignments = Array.isArray(kiosksResult) ? kiosksResult : (kiosksResult.data || []);
+
+                        // Filter for this client
+                        const filteredAssignments = allAssignments.filter(k =>
+                            String(k.client_id) === String(data.id) ||
+                            String(k.assigned_to?.client_id) === String(data.id) ||
+                            String(k.assigned_to?.id) === String(data.id)
+                        );
+
+                        // Map to component structure (KiosksTab expects 'id' to be the Kiosk ID string)
+                        clientKiosks = filteredAssignments.map(a => ({
+                            id: a.kiosk_id, // Use hardware ID as the main ID for display and actions
+                            assignment_id: a.id, // Keep internal assignment ID
+                            location: a.location,
+                            status: a.status || 'Offline',
+                            ...a
+                        }));
+
+                    } catch (kioskErr) {
+                        console.error("Failed to fetch kiosks", kioskErr);
+                    }
+
                     const mappedClient = {
                         id: data.id,
                         name: data.display_name,
@@ -51,7 +77,7 @@ const ClientDetails = () => {
                         status: data.api_client?.status || 'Unknown',
                         tier: data.api_client?.tier_id === 1 ? 'Starter' : data.api_client?.tier_id === 2 ? 'Growth' : data.api_client?.tier_id === 3 ? 'Enterprise' : 'Custom',
                         locations: data.locations || [],
-                        kiosks: [], // Not provided by this endpoint yet
+                        kiosks: clientKiosks,
                         api_client: {
                             ...data.api_client,
                             ...apiConfig // Merge parsed config (daily_quota, etc.) into api_client

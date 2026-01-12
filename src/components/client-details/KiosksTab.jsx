@@ -1,30 +1,50 @@
 import React, { useState } from 'react';
 import { Plus, Desktop, Circle, Trash, X } from '@phosphor-icons/react';
+import { api } from '../../services/api';
 
 const KiosksTab = ({ client, updateClient }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newKioskId, setNewKioskId] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleAddKiosk = () => {
+    const handleAddKiosk = async () => {
         if (!newKioskId) return alert('Kiosk ID is required');
 
-        const newKiosk = {
-            id: newKioskId,
-            status: 'Offline', // Default status
-            location: 'Unassigned'
-        };
+        setIsSubmitting(true);
+        try {
+            await api.kiosks.assign(newKioskId, { client_id: client.id });
 
-        const updatedKiosks = client.kiosks ? [...client.kiosks, newKiosk] : [newKiosk];
-        updateClient({ kiosks: updatedKiosks });
-        setIsModalOpen(false);
-        setNewKioskId('');
+            // Optimistic update
+            const newKiosk = {
+                id: newKioskId,
+                status: 'Offline',
+                location: 'Unassigned',
+                assigned_to: { client_id: client.id }
+            };
+
+            const updatedKiosks = client.kiosks ? [...client.kiosks, newKiosk] : [newKiosk];
+            updateClient({ kiosks: updatedKiosks });
+            setIsModalOpen(false);
+            setNewKioskId('');
+        } catch (error) {
+            console.error("Failed to assign kiosk", error);
+            alert("Failed to assign kiosk: " + (error.data?.detail || error.message));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleRemoveKiosk = (index) => {
+    const handleRemoveKiosk = async (index, kioskId) => {
         if (window.confirm('Unassign this kiosk?')) {
-            const updatedKiosks = [...client.kiosks];
-            updatedKiosks.splice(index, 1);
-            updateClient({ kiosks: updatedKiosks });
+            try {
+                await api.kiosks.unassign(kioskId);
+                const updatedKiosks = [...client.kiosks];
+                updatedKiosks.splice(index, 1);
+                updateClient({ kiosks: updatedKiosks });
+            } catch (error) {
+                console.error("Failed to unassign kiosk", error);
+                alert("Failed to unassign kiosk: " + (error.data?.detail || error.message));
+            }
         }
     };
 
@@ -61,7 +81,7 @@ const KiosksTab = ({ client, updateClient }) => {
                                             </div>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
-                                            <button className="icon-btn" style={{ color: 'var(--danger)' }} onClick={() => handleRemoveKiosk(idx)}>
+                                            <button className="icon-btn" style={{ color: 'var(--danger)' }} onClick={() => handleRemoveKiosk(idx, kiosk.id)}>
                                                 <Trash />
                                             </button>
                                         </td>
@@ -101,7 +121,9 @@ const KiosksTab = ({ client, updateClient }) => {
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleAddKiosk}>Assign</button>
+                            <button className="btn btn-primary" onClick={handleAddKiosk} disabled={isSubmitting}>
+                                {isSubmitting ? 'Assigning...' : 'Assign'}
+                            </button>
                         </div>
                     </div>
                 </div>
