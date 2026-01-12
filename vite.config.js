@@ -7,12 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://192.168.86.3:8000', // Backend URL
+        target: 'http://13.203.231.154:8000', // Backend URL
         changeOrigin: true,
         secure: false,
       },
       '/health': {
-        target: 'http://192.168.86.3:8000',
+        target: 'http://13.203.231.154:8000',
         changeOrigin: true,
         secure: false,
       },

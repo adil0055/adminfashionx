@@ -42,7 +42,7 @@ const Topbar = () => {
         };
 
         checkHealth();
-        const interval = setInterval(checkHealth, 60000); // Check every minute
+        const interval = setInterval(checkHealth, 120000); // Check every 2 minutes
         return () => clearInterval(interval);
     }, []);
 

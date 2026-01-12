@@ -40,8 +40,8 @@ const SystemHealth = () => {
 
     useEffect(() => {
         fetchHealth();
-        // Optional: Auto-refresh every 30s
-        const interval = setInterval(fetchHealth, 30000);
+        // Auto-refresh every 2 minutes
+        const interval = setInterval(fetchHealth, 120000);
         return () => clearInterval(interval);
     }, []);
 
@@ -118,6 +118,8 @@ const SystemHealth = () => {
                     )}
                     {data?.brokers && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Brokers: {data.brokers}</div>}
                     {data?.bucket && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bucket: {data.bucket}</div>}
+                    {data?.url && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>URL: {data.url}</div>}
+                    {data?.code && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>HTTP Code: {data.code}</div>}
                 </div>
             </div>
             <StatusBadge status={data?.status} latency={data?.latency_ms} />
@@ -203,6 +205,8 @@ const SystemHealth = () => {
                     <div>
                         <DependencyRow name="VTON Provider (Flux/Qwen)" data={health?.integrations?.vton_provider} icon={Cpu} />
                         <DependencyRow name="Object Storage (S3)" data={health?.integrations?.s3_storage} icon={HardDrives} />
+                        <DependencyRow name="Mask Component" data={health?.integrations?.mask_component} icon={Cpu} />
+                        <DependencyRow name="Qwen Mask Component" data={health?.integrations?.qwen_mask_component} icon={Cpu} />
                     </div>
                 </div>
 
