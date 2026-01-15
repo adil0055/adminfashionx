@@ -35,6 +35,8 @@ const UpdateCatalogues = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isValidatingZip, setIsValidatingZip] = useState(false);
     const [showZipInfo, setShowZipInfo] = useState(false);
+    const [uploadResponse, setUploadResponse] = useState(null); // Store API response
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     // Terms & Guidelines State
     const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
@@ -526,40 +528,96 @@ const UpdateCatalogues = () => {
         if (!file || validationStatus !== 'success' || !selectedClient) return;
 
         setIsUploading(true);
+        setUploadProgress(0);
+        setUploadResponse(null);
+        setValidationErrors([]);
+        
         try {
             const formData = new FormData();
             formData.append('file', processedFile || file);
+            formData.append('images_zip', zipFile); // Required according to API
+            
             if (extraDataFile) {
                 formData.append('extra_data', extraDataFile);
             }
-            if (zipFile) {
-                formData.append('images_zip', zipFile);
-            }
 
-            formData.append('client_id', selectedClient);
+            formData.append('client_id', selectedClient.toString());
 
             if (!isCustomLocation && selectedLocations.length > 0) {
                 formData.append('location_ids', selectedLocations.join(','));
             }
 
-            await api.catalogues.upload(formData);
-            alert('Catalogue uploaded successfully!');
-
-            // Clear local storage
-            localStorage.removeItem('pendingCatalogue');
-            localStorage.removeItem('pendingCatalogueName');
-            localStorage.removeItem('pendingCatalogueExtras');
-
-            setFile(null);
-            setProcessedFile(null);
-            setExtraDataFile(null);
-            setExtraColumns([]);
-            setValidationStatus(null);
+            const response = await api.catalogues.upload(formData);
+            
+            // Handle response according to API documentation
+            if (response.success) {
+                setUploadResponse(response);
+                setValidationStatus('success');
+                
+                // Clear local storage on success
+                localStorage.removeItem('pendingCatalogue');
+                localStorage.removeItem('pendingCatalogueName');
+                localStorage.removeItem('pendingCatalogueExtras');
+                
+                // Show success message with statistics
+                const message = `Upload successful!\n\n` +
+                    `Products Processed: ${response.products_processed || 0}\n` +
+                    `Products Failed: ${response.products_failed || 0}\n` +
+                    `Images Uploaded: ${response.data?.total_images_uploaded || 0}\n` +
+                    (response.validation_report?.warnings?.length > 0 
+                        ? `\nWarnings: ${response.validation_report.warnings.length}` 
+                        : '');
+                
+                alert(message);
+            } else {
+                // Handle validation errors from response
+                const errors = [];
+                if (response.validation_report?.errors) {
+                    response.validation_report.errors.forEach(err => {
+                        errors.push(`Row ${err.row || 'N/A'}: ${err.message}`);
+                    });
+                }
+                if (response.message) {
+                    errors.push(response.message);
+                }
+                if (errors.length === 0) {
+                    errors.push('Upload failed. Please check your files and try again.');
+                }
+                
+                setValidationErrors(errors);
+                setValidationStatus('error');
+                setUploadResponse(response);
+            }
         } catch (error) {
-            console.error(error);
-            alert('Upload failed: ' + error.message);
+            console.error('Upload error:', error);
+            
+            // Extract error details from API response
+            let errorMessages = [];
+            if (error.data?.detail) {
+                const detail = error.data.detail;
+                if (Array.isArray(detail.errors)) {
+                    errorMessages = detail.errors.map(e => 
+                        `Row ${e.row || 'N/A'}: ${e.message || e}`
+                    );
+                } else if (detail.message) {
+                    errorMessages.push(detail.message);
+                } else if (typeof detail === 'string') {
+                    errorMessages.push(detail);
+                }
+            } else if (error.message) {
+                errorMessages.push(error.message);
+            } else {
+                errorMessages.push('Upload failed. Please check your connection and try again.');
+            }
+            
+            setValidationErrors(errorMessages);
+            setValidationStatus('error');
+            
+            // Show error alert
+            alert('Upload failed:\n\n' + errorMessages.join('\n'));
         } finally {
             setIsUploading(false);
+            setUploadProgress(0);
         }
     };
 
@@ -1144,7 +1202,7 @@ const UpdateCatalogues = () => {
                                 </div>
                             )}
 
-                            {validationStatus === 'success' && (
+                            {validationStatus === 'success' && !uploadResponse && (
                                 <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#34d399' }}>
                                         <CheckCircle size={24} weight="fill" />
@@ -1186,6 +1244,79 @@ const UpdateCatalogues = () => {
                                             Please select a client above to proceed
                                         </p>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Upload Success Response */}
+                            {uploadResponse && uploadResponse.success && (
+                                <div className="animate-slide-up" style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#34d399', marginBottom: '1rem' }}>
+                                        <CheckCircle size={24} weight="fill" />
+                                        <div>
+                                            <p style={{ fontWeight: 600, margin: 0 }}>Upload Successful!</p>
+                                            <p style={{ fontSize: '0.75rem', opacity: 0.8, margin: 0 }}>{uploadResponse.message || 'Catalogue uploaded successfully'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                                        <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)' }}>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>Products Processed</div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#34d399' }}>{uploadResponse.products_processed || 0}</div>
+                                        </div>
+                                        {uploadResponse.products_failed > 0 && (
+                                            <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>Products Failed</div>
+                                                <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#fb7185' }}>{uploadResponse.products_failed}</div>
+                                            </div>
+                                        )}
+                                        {uploadResponse.data?.total_images_uploaded !== undefined && (
+                                            <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>Images Uploaded</div>
+                                                <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#34d399' }}>{uploadResponse.data.total_images_uploaded}</div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {uploadResponse.validation_report?.warnings && uploadResponse.validation_report.warnings.length > 0 && (
+                                        <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fbbf24', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                                <Warning size={18} weight="fill" />
+                                                <span>Warnings ({uploadResponse.validation_report.warnings.length})</span>
+                                            </div>
+                                            <ul className="custom-scrollbar" style={{ paddingLeft: '1.25rem', margin: 0, fontSize: '0.75rem', color: '#fbbf24', maxHeight: '6rem', overflowY: 'auto' }}>
+                                                {uploadResponse.validation_report.warnings.slice(0, 10).map((warning, i) => (
+                                                    <li key={i} style={{ marginBottom: '0.25rem' }}>
+                                                        {warning.row ? `Row ${warning.row}: ` : ''}{warning.message || warning}
+                                                    </li>
+                                                ))}
+                                                {uploadResponse.validation_report.warnings.length > 10 && (
+                                                    <li style={{ fontStyle: 'italic', opacity: 0.7 }}>
+                                                        ... and {uploadResponse.validation_report.warnings.length - 10} more warnings
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={() => {
+                                            setFile(null);
+                                            setProcessedFile(null);
+                                            setExtraDataFile(null);
+                                            setExtraColumns([]);
+                                            setValidationStatus(null);
+                                            setUploadResponse(null);
+                                            setZipFile(null);
+                                            setZipEntries(new Set());
+                                            localStorage.removeItem('pendingCatalogue');
+                                            localStorage.removeItem('pendingCatalogueName');
+                                            localStorage.removeItem('pendingCatalogueExtras');
+                                        }}
+                                        className="btn-primary"
+                                        style={{ width: '100%', marginTop: '1rem' }}
+                                    >
+                                        Upload Another Catalogue
+                                    </button>
                                 </div>
                             )}
                         </div>

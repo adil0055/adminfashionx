@@ -38,12 +38,22 @@ const handleResponse = async (response) => {
 
 const request = async (endpoint, options = {}) => {
     const url = `${BASE_URL}${endpoint}`;
+    
+    // For FormData (multipart/form-data), don't set Content-Type header
+    // Let the browser set it automatically with the correct boundary
+    const isFormData = options.body instanceof FormData;
+    const headers = isFormData 
+        ? { ...getHeaders(), 'Content-Type': undefined, ...options.headers }
+        : { ...getHeaders(), ...options.headers };
+    
+    // Remove Content-Type if it's undefined (for FormData)
+    if (headers['Content-Type'] === undefined) {
+        delete headers['Content-Type'];
+    }
+    
     const config = {
         ...options,
-        headers: {
-            ...getHeaders(),
-            ...options.headers
-        }
+        headers
     };
 
     try {
@@ -213,20 +223,44 @@ export const api = {
         })
     },
     catalogues: {
+        /**
+         * Upload Catalogue
+         * POST /catalogues/upload
+         * Body: FormData with fields: client_id, file (CSV), images_zip, location_ids? (comma-separated), extra_data? (JSON file)
+         * Returns: { success, request_id, message, products_processed, products_failed, validation_report, data, created_at }
+         */
         upload: (formData) => request('/catalogues/upload', {
             method: 'POST',
-            body: formData,
-            // Fetch handles multipart/form-data automatically if we don't set Content-Type header manually
-            // But our request wrapper sets Content-Type: application/json by default.
-            // We need to override headers to let browser set boundary.
-            headers: {
-                'Content-Type': undefined
-            }
+            body: formData
         }),
-        listProducts: (clientId) => request(`/catalogues/client/${clientId}/products`),
+        /**
+         * List Products for Client
+         * GET /catalogues/client/{clientId}/products
+         * Query params: limit (default: 50, max: 100), offset (default: 0)
+         * Returns: { products: ProductListItem[], total: number, limit: number, offset: number }
+         */
+        listProducts: (clientId, limit = 50, offset = 0) => {
+            const params = new URLSearchParams();
+            if (limit) params.append('limit', limit.toString());
+            if (offset) params.append('offset', offset.toString());
+            const queryString = params.toString();
+            const url = `/catalogues/client/${clientId}/products${queryString ? `?${queryString}` : ''}`;
+            return request(url);
+        },
+        /**
+         * Delete Product
+         * DELETE /catalogues/products/{productId}
+         * Returns: { success: boolean, message: string }
+         */
         deleteProduct: (productId) => request(`/catalogues/products/${productId}`, {
             method: 'DELETE'
         }),
+        /**
+         * Update Product
+         * PUT /catalogues/products/{productId}
+         * Body: { name?, price?, discount?, description?, material_care?, base_colour?, sizes? }
+         * Returns: { success: boolean, message: string, product_id: string, updated_fields: string[] }
+         */
         updateProduct: (productId, data) => request(`/catalogues/products/${productId}`, {
             method: 'PUT',
             body: JSON.stringify(data)
