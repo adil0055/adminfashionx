@@ -491,9 +491,12 @@ const KiosksStock = () => {
                                     onChange={(e) => setAssignData({ ...assignData, clientId: e.target.value, locationId: '' })}
                                 >
                                     <option value="">-- Select Client --</option>
-                                    {clients.map(client => (
-                                        <option key={client.id} value={client.id}>{client.display_name}</option>
-                                    ))}
+                                    {clients
+                                        .filter(client => client.client_type === 'KIOSK' || client.client_type === 'HYBRID')
+                                        .map(client => (
+                                            <option key={client.id} value={client.id}>{client.display_name}</option>
+                                        ))
+                                    }
                                 </select>
                             </div>
                             <div className="form-group">

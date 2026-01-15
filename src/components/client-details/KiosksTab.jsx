@@ -53,9 +53,9 @@ const KiosksTab = ({ client, updateClient }) => {
             <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 className="card-header" style={{ marginBottom: 0 }}>Assigned Kiosks</h3>
-                    <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-                        <Plus /> Assign Kiosk
-                    </button>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Assign kiosks from the <strong>Kiosk → Stock</strong> section
+                    </span>
                 </div>
 
                 <div className="data-table-container">

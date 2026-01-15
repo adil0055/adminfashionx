@@ -38,19 +38,19 @@ const handleResponse = async (response) => {
 
 const request = async (endpoint, options = {}) => {
     const url = `${BASE_URL}${endpoint}`;
-    
+
     // For FormData (multipart/form-data), don't set Content-Type header
     // Let the browser set it automatically with the correct boundary
     const isFormData = options.body instanceof FormData;
-    const headers = isFormData 
+    const headers = isFormData
         ? { ...getHeaders(), 'Content-Type': undefined, ...options.headers }
         : { ...getHeaders(), ...options.headers };
-    
+
     // Remove Content-Type if it's undefined (for FormData)
     if (headers['Content-Type'] === undefined) {
         delete headers['Content-Type'];
     }
-    
+
     const config = {
         ...options,
         headers
@@ -239,10 +239,16 @@ export const api = {
          * Query params: limit (default: 50, max: 100), offset (default: 0)
          * Returns: { products: ProductListItem[], total: number, limit: number, offset: number }
          */
-        listProducts: (clientId, limit = 50, offset = 0) => {
+        listProducts: (clientId, limit = 50, offset = 0, filters = {}) => {
             const params = new URLSearchParams();
             if (limit) params.append('limit', limit.toString());
             if (offset) params.append('offset', offset.toString());
+
+            // Append optional filters
+            if (filters.search) params.append('search', filters.search);
+            if (filters.gender) params.append('gender', filters.gender);
+            if (filters.category) params.append('category', filters.category);
+
             const queryString = params.toString();
             const url = `/catalogues/client/${clientId}/products${queryString ? `?${queryString}` : ''}`;
             return request(url);

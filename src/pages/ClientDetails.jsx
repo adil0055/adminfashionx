@@ -75,7 +75,9 @@ const ClientDetails = () => {
                         client_type: data.client_type,
                         email: data.contact_email,
                         status: data.api_client?.status || 'Unknown',
-                        tier: data.api_client?.tier_id === 1 ? 'Starter' : data.api_client?.tier_id === 2 ? 'Growth' : data.api_client?.tier_id === 3 ? 'Enterprise' : 'Custom',
+                        // Use tier_name from api_client if available, otherwise use tier object's name
+                        tier: data.api_client?.tier_name || data.api_client?.tier?.name || data.tier_name || '',
+                        tier_id: data.api_client?.tier_id || data.tier_id,
                         locations: data.locations || [],
                         kiosks: clientKiosks,
                         api_client: {
@@ -187,10 +189,12 @@ const ClientDetails = () => {
                     <div className="stat-value" style={{ fontSize: '1.5rem' }}>{client.locations?.length || 0}</div>
                     <div className="stat-label">Total Locations</div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-value" style={{ fontSize: '1.5rem' }}>{client.kiosks?.length || 0}</div>
-                    <div className="stat-label">Active Kiosks</div>
-                </div>
+                {(client.client_type === 'KIOSK' || client.client_type === 'HYBRID') && (
+                    <div className="stat-card">
+                        <div className="stat-value" style={{ fontSize: '1.5rem' }}>{client.kiosks?.length || 0}</div>
+                        <div className="stat-label">Active Kiosks</div>
+                    </div>
+                )}
                 <div className="stat-card">
                     <div className="stat-value" style={{ fontSize: '1.5rem', color: 'var(--warning)' }}>$0.00</div>
                     <div className="stat-label">Payment Due</div>
@@ -217,12 +221,14 @@ const ClientDetails = () => {
                 >
                     <MapPin /> Locations
                 </button>
-                <button
-                    className={`tab-btn ${activeTab === 'kiosks' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('kiosks')}
-                >
-                    <Desktop /> Kiosks
-                </button>
+                {(client.client_type === 'KIOSK' || client.client_type === 'HYBRID') && (
+                    <button
+                        className={`tab-btn ${activeTab === 'kiosks' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('kiosks')}
+                    >
+                        <Desktop /> Kiosks
+                    </button>
+                )}
                 <button
                     className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
                     onClick={() => setActiveTab('settings')}
@@ -248,7 +254,7 @@ const ClientDetails = () => {
                 {activeTab === 'locations' && (
                     <LocationsTab client={client} updateClient={updateClientState} />
                 )}
-                {activeTab === 'kiosks' && (
+                {activeTab === 'kiosks' && (client.client_type === 'KIOSK' || client.client_type === 'HYBRID') && (
                     <KiosksTab client={client} updateClient={updateClientState} />
                 )}
                 {activeTab === 'settings' && (

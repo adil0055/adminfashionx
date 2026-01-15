@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import vtonRefImage from '../../assets/vton_reference.jpg';
 import { UploadSimple, FileCsv, CheckCircle, Warning, DownloadSimple, CircleNotch, FileZip, CaretDown, CaretUp, X, Info } from '@phosphor-icons/react';
-import JSZip from 'jszip';
+
+import { getZipFileNames } from '../../utils/zipReader';
+// removed JSZip import since we use custom reader now
 
 // Import Guideline Images
 import backViewImg from '../../assets/vton_guidelines/back_view.png';
@@ -10,7 +12,9 @@ import holdingObjImg from '../../assets/vton_guidelines/holding_object.png';
 import sidewaysGlassesImg from '../../assets/vton_guidelines/sideways_glasses.png';
 import complexBgImg from '../../assets/vton_guidelines/complex_bg.png';
 import sidewaysPoseImg from '../../assets/vton_guidelines/sideways_pose.png';
+
 import goodExampleImg from '../../assets/vton_guidelines/good_example.png';
+import zipStructureImg from '../../assets/zip_structure_ref.png'; // New Image Import
 
 const UpdateCatalogues = () => {
     const [clients, setClients] = useState([]);
@@ -21,6 +25,7 @@ const UpdateCatalogues = () => {
     const [selectedLocations, setSelectedLocations] = useState([]); // Array of selected location IDs
     const [isCustomLocation, setIsCustomLocation] = useState(false);
     const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+    const locationDropdownRef = useRef(null);
 
     // File State
     const [file, setFile] = useState(null);
@@ -42,6 +47,7 @@ const UpdateCatalogues = () => {
     const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(true);
     const [termsChecked, setTermsChecked] = useState(false);
+    const [isReadOnlyMode, setIsReadOnlyMode] = useState(false); // Used when viewing guidelines manually
 
     useEffect(() => {
         fetchClients();
@@ -74,6 +80,23 @@ const UpdateCatalogues = () => {
         }
     }, []);
 
+    // Click outside handler for location dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target)) {
+                setIsLocationDropdownOpen(false);
+            }
+        };
+
+        if (isLocationDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isLocationDropdownOpen]);
+
     const fetchClients = async () => {
         try {
             const response = await api.clients.list();
@@ -93,8 +116,9 @@ const UpdateCatalogues = () => {
         setClientLocations([]);
         setFile(null);
         setProcessedFile(null);
-        setZipFile(null);
-        setZipEntries(new Set());
+        // Don't clear zip file when client changes, as it's likely the same for different clients or user workflow
+        // setZipFile(null); 
+        // setZipEntries(new Set());
         setValidationStatus(null);
         setValidationErrors([]);
 
@@ -132,43 +156,50 @@ const UpdateCatalogues = () => {
     };
 
     const handleZipChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const zipFileObj = e.target.files[0];
+        if (!zipFileObj) return;
 
-        setZipFile(file);
+        // Reset input value to allow re-uploading the same file if needed
+        e.target.value = '';
+
+        setZipFile(zipFileObj);
         setIsValidatingZip(true);
         setValidationStatus(null); // Re-trigger CSV validation if zip changes
 
         try {
-            const zip = new JSZip();
-            const contents = await zip.loadAsync(file);
-            const paths = new Set();
-
-            contents.forEach((relativePath, zipEntry) => {
-                if (!zipEntry.dir) {
-                    paths.add(relativePath);
-                }
-            });
+            // Use smart reader for all files (handles large files efficiently)
+            const paths = await getZipFileNames(zipFileObj);
 
             setZipEntries(paths);
 
             // If CSV is already loaded, re-validate it against the new zip
-            if (processedFile || file) {
-                // We need to re-run validation. 
-                // If processedFile exists, use it? No, use original file to be safe or just re-validate.
-                // Actually, we can just trigger validation on the current file state if we had access to it.
-                // But `file` state is available.
-                if (file) validateCSV(file, paths);
+            if (file) {
+                validateCSV(file, paths, zipFileObj);
             }
 
         } catch (err) {
             console.error("Failed to read zip", err);
-            alert("Failed to read zip file. Please ensure it is a valid zip.");
+            alert("Failed to read zip file structure. Please ensure it is a valid zip archive.");
             setZipFile(null);
             setZipEntries(new Set());
         } finally {
             setIsValidatingZip(false);
         }
+    };
+
+    const handleRemoveZip = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setZipFile(null);
+        setZipEntries(new Set());
+        setValidationStatus(null);
+        setValidationErrors([]);
+    };
+
+    const handleRemoveCSV = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleDiscard();
     };
 
     const handleDownloadExample = () => {
@@ -308,7 +339,9 @@ const UpdateCatalogues = () => {
         return headerLine + '\n' + body;
     };
 
-    const validateCSV = (file, currentZipEntries = zipEntries) => {
+    const validateCSV = (file, currentZipEntries = zipEntries, currentZipFile = null) => {
+        // Use provided zip file or fallback to state
+        const activeZipFile = currentZipFile || zipFile;
         setValidationStatus('validating');
         setValidationErrors([]);
 
@@ -372,6 +405,10 @@ const UpdateCatalogues = () => {
             // Prepare for location validation
             const validLocationNames = clientLocations.map(l => l.name.toLowerCase());
 
+            // Track duplicate IDs
+            const seenIds = new Set();
+
+
             rows.forEach(row => {
                 // Skip empty rows
                 const isRowEmpty = row.values.every(val => !val || val.trim() === '');
@@ -384,6 +421,16 @@ const UpdateCatalogues = () => {
                         errors.push(`Line ${row.line}: Missing required field '${field}'`);
                     }
                 });
+
+                // Duplicate ID Check
+                const idVal = row.values[headerMap['id']];
+                if (idVal && idVal !== '' && idVal.toLowerCase() !== 'null') {
+                    if (seenIds.has(idVal)) {
+                        errors.push(`Line ${row.line}: Duplicate ID found '${idVal}'. IDs must be unique.`);
+                    } else {
+                        seenIds.add(idVal);
+                    }
+                }
 
                 // Location Validation
                 if (isCustomLocation) {
@@ -427,11 +474,11 @@ const UpdateCatalogues = () => {
                 }
             });
 
-            if (currentZipEntries.size === 0 && zipFile) {
+            if (currentZipEntries.size === 0 && activeZipFile) {
                 // Zip is loaded but empty? Or maybe parsing failed silently?
                 // If zipFile is present but entries 0, maybe wait? 
                 // But we handle that in handleZipChange.
-            } else if (!zipFile) {
+            } else if (!activeZipFile) {
                 // Warn that zip is missing? User said "uploaded folder should be a zip file too".
                 // Maybe strict error?
                 errors.push("Missing Image Zip file. Please upload the images zip.");
@@ -506,6 +553,9 @@ const UpdateCatalogues = () => {
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
+            // Reset input value to allow re-uploading the same file
+            e.target.value = '';
+
             setFile(selectedFile);
             setProcessedFile(null);
             validateCSV(selectedFile);
@@ -531,12 +581,12 @@ const UpdateCatalogues = () => {
         setUploadProgress(0);
         setUploadResponse(null);
         setValidationErrors([]);
-        
+
         try {
             const formData = new FormData();
             formData.append('file', processedFile || file);
             formData.append('images_zip', zipFile); // Required according to API
-            
+
             if (extraDataFile) {
                 formData.append('extra_data', extraDataFile);
             }
@@ -548,26 +598,26 @@ const UpdateCatalogues = () => {
             }
 
             const response = await api.catalogues.upload(formData);
-            
+
             // Handle response according to API documentation
             if (response.success) {
                 setUploadResponse(response);
                 setValidationStatus('success');
-                
+
                 // Clear local storage on success
                 localStorage.removeItem('pendingCatalogue');
                 localStorage.removeItem('pendingCatalogueName');
                 localStorage.removeItem('pendingCatalogueExtras');
-                
+
                 // Show success message with statistics
                 const message = `Upload successful!\n\n` +
                     `Products Processed: ${response.products_processed || 0}\n` +
                     `Products Failed: ${response.products_failed || 0}\n` +
                     `Images Uploaded: ${response.data?.total_images_uploaded || 0}\n` +
-                    (response.validation_report?.warnings?.length > 0 
-                        ? `\nWarnings: ${response.validation_report.warnings.length}` 
+                    (response.validation_report?.warnings?.length > 0
+                        ? `\nWarnings: ${response.validation_report.warnings.length}`
                         : '');
-                
+
                 alert(message);
             } else {
                 // Handle validation errors from response
@@ -583,20 +633,20 @@ const UpdateCatalogues = () => {
                 if (errors.length === 0) {
                     errors.push('Upload failed. Please check your files and try again.');
                 }
-                
+
                 setValidationErrors(errors);
                 setValidationStatus('error');
                 setUploadResponse(response);
             }
         } catch (error) {
             console.error('Upload error:', error);
-            
+
             // Extract error details from API response
             let errorMessages = [];
             if (error.data?.detail) {
                 const detail = error.data.detail;
                 if (Array.isArray(detail.errors)) {
-                    errorMessages = detail.errors.map(e => 
+                    errorMessages = detail.errors.map(e =>
                         `Row ${e.row || 'N/A'}: ${e.message || e}`
                     );
                 } else if (detail.message) {
@@ -609,10 +659,10 @@ const UpdateCatalogues = () => {
             } else {
                 errorMessages.push('Upload failed. Please check your connection and try again.');
             }
-            
+
             setValidationErrors(errorMessages);
             setValidationStatus('error');
-            
+
             // Show error alert
             alert('Upload failed:\n\n' + errorMessages.join('\n'));
         } finally {
@@ -641,12 +691,15 @@ const UpdateCatalogues = () => {
                     </p>
                 </div>
                 <button
-                    onClick={() => setShowTermsModal(true)}
+                    onClick={() => {
+                        setIsReadOnlyMode(true); // Open in read-only mode
+                        setShowTermsModal(true);
+                    }}
                     className="btn-secondary"
                     style={{ fontSize: '0.85rem' }}
                 >
                     <Info size={18} />
-                    View Guidelines
+                    VTON Guidelines
                 </button>
             </div>
 
@@ -762,34 +815,46 @@ const UpdateCatalogues = () => {
                             background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px',
                             display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center'
                         }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={termsChecked}
-                                    onChange={(e) => setTermsChecked(e.target.checked)}
-                                    style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
-                                />
-                                <span style={{ color: '#fff', fontSize: '1rem' }}>
-                                    I have read the guidelines and confirm that my images meet these requirements.
-                                </span>
-                            </label>
+                            {isReadOnlyMode ? (
+                                <button
+                                    onClick={() => setShowTermsModal(false)}
+                                    className="btn-secondary"
+                                    style={{ width: '100%', maxWidth: '200px' }}
+                                >
+                                    Close Guidelines
+                                </button>
+                            ) : (
+                                <>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={termsChecked}
+                                            onChange={(e) => setTermsChecked(e.target.checked)}
+                                            style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ color: '#fff', fontSize: '1rem' }}>
+                                            I have read the guidelines and confirm that my images meet these requirements.
+                                        </span>
+                                    </label>
 
-                            <button
-                                onClick={() => {
-                                    if (termsChecked) {
-                                        setHasAcceptedTerms(true);
-                                        setShowTermsModal(false);
-                                    }
-                                }}
-                                disabled={!termsChecked}
-                                className="btn-primary"
-                                style={{
-                                    width: '100%', maxWidth: '300px', padding: '1rem', fontSize: '1rem',
-                                    opacity: termsChecked ? 1 : 0.5, cursor: termsChecked ? 'pointer' : 'not-allowed'
-                                }}
-                            >
-                                I Agree & Continue
-                            </button>
+                                    <button
+                                        onClick={() => {
+                                            if (termsChecked) {
+                                                setHasAcceptedTerms(true);
+                                                setShowTermsModal(false);
+                                            }
+                                        }}
+                                        disabled={!termsChecked}
+                                        className="btn-primary"
+                                        style={{
+                                            width: '100%', maxWidth: '300px', padding: '1rem', fontSize: '1rem',
+                                            opacity: termsChecked ? 1 : 0.5, cursor: termsChecked ? 'pointer' : 'not-allowed'
+                                        }}
+                                    >
+                                        I Agree & Continue
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -820,7 +885,7 @@ const UpdateCatalogues = () => {
                     </div>
                     <div className="form-group">
                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#94a3b8', marginBottom: '0.5rem' }}>Select Location(s)</label>
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative' }} ref={locationDropdownRef}>
                             <button
                                 onClick={() => !(!selectedClient) && setIsLocationDropdownOpen(!isLocationDropdownOpen)}
                                 disabled={!selectedClient}
@@ -1084,6 +1149,32 @@ const UpdateCatalogues = () => {
                             }}>
                                 {zipFile ? (
                                     <>
+                                        <button
+                                            onClick={handleRemoveZip}
+                                            style={{
+                                                position: 'absolute',
+                                                top: '10px',
+                                                right: '10px',
+                                                background: 'rgba(236, 72, 153, 0.2)',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: '32px',
+                                                height: '32px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                zIndex: 20,
+                                                color: '#f472b6',
+                                                transition: 'all 0.2s',
+                                                backdropFilter: 'blur(4px)'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(236, 72, 153, 0.4)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(236, 72, 153, 0.2)'}
+                                            title="Remove Zip File"
+                                        >
+                                            <X size={18} weight="bold" />
+                                        </button>
                                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(236, 72, 153, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem', color: '#f472b6' }}>
                                             <FileZip size={24} weight="fill" />
                                         </div>
@@ -1139,6 +1230,32 @@ const UpdateCatalogues = () => {
                             }}>
                                 {file ? (
                                     <>
+                                        <button
+                                            onClick={handleRemoveCSV}
+                                            style={{
+                                                position: 'absolute',
+                                                top: '10px',
+                                                right: '10px',
+                                                background: 'rgba(16, 185, 129, 0.2)',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: '32px',
+                                                height: '32px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                zIndex: 20,
+                                                color: '#34d399',
+                                                transition: 'all 0.2s',
+                                                backdropFilter: 'blur(4px)'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.4)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)'}
+                                            title="Remove CSV File"
+                                        >
+                                            <X size={18} weight="bold" />
+                                        </button>
                                         <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem', color: '#34d399' }}>
                                             <FileCsv size={32} weight="fill" />
                                         </div>
@@ -1257,7 +1374,7 @@ const UpdateCatalogues = () => {
                                             <p style={{ fontSize: '0.75rem', opacity: 0.8, margin: 0 }}>{uploadResponse.message || 'Catalogue uploaded successfully'}</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
                                         <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(0,0,0,0.2)' }}>
                                             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>Products Processed</div>
@@ -1338,7 +1455,7 @@ const UpdateCatalogues = () => {
                     padding: '1rem'
                 }}>
                     <div className="glass-card" style={{
-                        maxWidth: '500px',
+                        maxWidth: '900px', // Wider modal
                         width: '100%',
                         padding: '1.5rem',
                         borderRadius: '16px',
@@ -1358,29 +1475,61 @@ const UpdateCatalogues = () => {
                         </div>
 
                         <div style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                            <p style={{ marginBottom: '1rem' }}>
+                            <p style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                                 To ensure your product images are correctly linked, please follow these strict guidelines:
                             </p>
 
-                            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                                <h4 style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>1. Folder Structure</h4>
-                                <code style={{ display: 'block', fontFamily: 'monospace', color: '#f472b6', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '6px' }}>
-                                    garments/<br />
-                                    ├── 1001/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;-- Product ID<br />
-                                    │&nbsp;&nbsp;&nbsp;├── thumb.jpg<br />
-                                    │&nbsp;&nbsp;&nbsp;├── vton.jpg<br />
-                                    │&nbsp;&nbsp;&nbsp;└── other.jpg<br />
-                                    ├── 1002/<br />
-                                    │&nbsp;&nbsp;&nbsp;└── ...<br />
-                                </code>
-                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                {/* Left Column: Structure Visuals */}
+                                <div>
+                                    <h4 style={{ color: '#fff', fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                                        1. Folder Structure
+                                    </h4>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <h4 style={{ color: '#fff', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>2. Filename Matching</h4>
-                                <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
-                                    <li>The filenames in your CSV columns (<code>Thumbnail Image Filename</code>, etc.) MUST match exactly with the files inside the zip.</li>
-                                    <li>Example: If CSV says <code>blue_shirt_01.jpg</code> for Product ID <code>1001</code>, the zip must contain <code>garments/1001/blue_shirt_01.jpg</code>.</li>
-                                </ul>
+                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                            <img src={zipStructureImg} alt="Zip Structure Reference" style={{ width: '100%', display: 'block' }} />
+                                        </div>
+                                        <code style={{ display: 'block', fontFamily: 'monospace', color: '#f472b6', background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.8rem' }}>
+                                            garments/<br />
+                                            ├── 1001/ &nbsp;&nbsp;&lt;-- Product ID<br />
+                                            │&nbsp;&nbsp;&nbsp;├── thumb.jpg<br />
+                                            │&nbsp;&nbsp;&nbsp;├── vton.jpg<br />
+                                            │&nbsp;&nbsp;&nbsp;└── ...<br />
+                                        </code>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Rules & Details */}
+                                <div>
+                                    <h4 style={{ color: '#fff', fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                                        2. Filename Matching
+                                    </h4>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', height: '100%' }}>
+                                        <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <li>
+                                                <strong style={{ color: '#e2e8f0' }}>Exact Match Required:</strong>
+                                                <div style={{ marginTop: '0.25rem', opacity: 0.8 }}>
+                                                    Filenames in CSV columns (<code>Thumbnail Image Filename</code>) MUST match files in the zip exactly.
+                                                </div>
+                                            </li>
+                                            <li>
+                                                <strong style={{ color: '#e2e8f0' }}>Example:</strong>
+                                                <div style={{ marginTop: '0.25rem', opacity: 0.8 }}>
+                                                    If CSV has Product ID <code>1001</code> and image <code>blue_shirt.jpg</code>:<br />
+                                                    Path must be: <span style={{ color: '#f472b6' }}>garments/1001/blue_shirt.jpg</span>
+                                                </div>
+                                            </li>
+                                            <li>
+                                                <strong style={{ color: '#e2e8f0' }}>No Extra Folders:</strong>
+                                                <div style={{ marginTop: '0.25rem', opacity: 0.8 }}>
+                                                    Ensure you don't have nested folders like <code>garments/garments/...</code>.
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

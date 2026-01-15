@@ -28,12 +28,11 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [clientsResult, assignedKiosksResult, stockKiosksResult, logsResult, healthResult] = await Promise.all([
+                const [clientsResult, assignedKiosksResult, stockKiosksResult, logsResult] = await Promise.all([
                     api.clients.list(),
                     api.kiosks.listAssigned(),
                     api.kiosks.listStock(),
-                    api.audit.getLogs(),
-                    api.health.diagnostic()
+                    api.audit.getLogs()
                 ]);
 
                 let activeClients = 0;
@@ -57,20 +56,11 @@ const Dashboard = () => {
                     }));
                 }
 
-                // Parse Health
-                let sysHealth = 'Unknown';
-                if (healthResult.success && healthResult.data?.status) {
-                    const s = healthResult.data.status.toLowerCase();
-                    if (s === 'healthy') sysHealth = '100% (Stable)';
-                    else if (s === 'degraded') sysHealth = 'Degraded';
-                    else sysHealth = 'Critical';
-                }
-
                 setStats({
                     activeClients,
                     totalKiosks,
                     policyViolations: 3, // Mock
-                    systemHealth: sysHealth
+                    systemHealth: 'Check Status'
                 });
                 setRecentLogs(logs);
 
@@ -128,7 +118,7 @@ const Dashboard = () => {
                     <div className="stats-value">{stats.systemHealth}</div>
                     <div className="stats-trend up">
                         <TrendUp weight="bold" />
-                        Stable
+                        Click to View
                     </div>
                 </Link>
             </div>
