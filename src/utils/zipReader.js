@@ -1,9 +1,9 @@
 /**
- * Efficiently reads file names from a ZIP file without loading the entire file into memory.
+ * Efficiently reads file names and sizes from a ZIP file without loading the entire file into memory.
  * Reads only the Central Directory at the end of the file.
  * 
  * @param {File} file - The ZIP file object (Blob)
- * @returns {Promise<Set<string>>} - A Set containing all file paths in the zip
+ * @returns {Promise<Map<string, number>>} - A Map containing file paths as keys and uncompressed sizes (bytes) as values
  */
 export const getZipFileNames = async (file) => {
     const textDecoder = new TextDecoder("utf-8");
@@ -64,15 +64,25 @@ export const getZipFileNames = async (file) => {
     const cdBuffer = await readBlob(cdSlice);
     const cdView = new DataView(cdBuffer);
 
-    const paths = new Set();
+    // Return Map of { path: size } instead of Set
+    const files = new Map();
     let offset = 0;
 
-    // CD Header Signature: 0x02014b50
-    // Header size: 46 bytes (base) + variable filenames
+    // CD Header Structure:
+    // Offset 0: Signature (4 bytes) - 0x02014b50
+    // Offset 24: Uncompressed size (4 bytes)
+    // Offset 28: File name length (2 bytes)
+    // Offset 30: Extra field length (2 bytes)
+    // Offset 32: File comment length (2 bytes)
+    // Offset 46: File name (variable)
+
     while (offset < cdBuffer.byteLength) {
         if (cdView.getUint32(offset, true) !== 0x02014b50) {
             break; // Stop if invalid signature (end of CD)
         }
+
+        // Read uncompressed file size from offset 24
+        const uncompressedSize = cdView.getUint32(offset + 24, true);
 
         const fileNameLen = cdView.getUint16(offset + 28, true);
         const extraFieldLen = cdView.getUint16(offset + 30, true);
@@ -85,12 +95,12 @@ export const getZipFileNames = async (file) => {
         // Only add files, not directories (usually differ by trailing slash, or external attrs)
         // Basic check: if it ends with /, it's a directory
         if (!fileName.endsWith('/')) {
-            paths.add(fileName);
+            files.set(fileName, uncompressedSize);
         }
 
         // Move to next entry
         offset += 46 + fileNameLen + extraFieldLen + fileCommentLen;
     }
 
-    return paths;
+    return files;
 };

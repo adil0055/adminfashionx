@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 import vtonRefImage from '../../assets/vton_reference.jpg';
-import { UploadSimple, FileCsv, CheckCircle, Warning, DownloadSimple, CircleNotch, FileZip, CaretDown, CaretUp, X, Info } from '@phosphor-icons/react';
+import { UploadSimple, FileCsv, CheckCircle, Warning, DownloadSimple, CircleNotch, FileZip, CaretDown, CaretUp, X, Info, XCircle, FileText, Image, Folder, MagnifyingGlass, Package, List, Copy, MapPin } from '@phosphor-icons/react';
 
 import { getZipFileNames } from '../../utils/zipReader';
 // removed JSZip import since we use custom reader now
@@ -31,7 +32,7 @@ const UpdateCatalogues = () => {
     const [file, setFile] = useState(null);
     const [processedFile, setProcessedFile] = useState(null);
     const [zipFile, setZipFile] = useState(null);
-    const [zipEntries, setZipEntries] = useState(new Set()); // Set of file paths in zip
+    const [zipEntries, setZipEntries] = useState(new Map()); // Map of { path: size } in zip
 
     const [extraDataFile, setExtraDataFile] = useState(null);
     const [validationStatus, setValidationStatus] = useState(null); // 'validating', 'success', 'error'
@@ -40,6 +41,7 @@ const UpdateCatalogues = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isValidatingZip, setIsValidatingZip] = useState(false);
     const [showZipInfo, setShowZipInfo] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
     const [uploadResponse, setUploadResponse] = useState(null); // Store API response
     const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -181,7 +183,7 @@ const UpdateCatalogues = () => {
             console.error("Failed to read zip", err);
             alert("Failed to read zip file structure. Please ensure it is a valid zip archive.");
             setZipFile(null);
-            setZipEntries(new Set());
+            setZipEntries(new Map());
         } finally {
             setIsValidatingZip(false);
         }
@@ -191,7 +193,7 @@ const UpdateCatalogues = () => {
         e.preventDefault();
         e.stopPropagation();
         setZipFile(null);
-        setZipEntries(new Set());
+        setZipEntries(new Map());
         setValidationStatus(null);
         setValidationErrors([]);
     };
@@ -384,15 +386,25 @@ const UpdateCatalogues = () => {
 
             requiredFields.forEach(field => {
                 if (headerMap[field] === undefined) {
-                    errors.push(`Missing required header: ${field}`);
+                    errors.push({
+                        type: 'header_missing',
+                        message: `Missing required column: ${field}`,
+                        detail: `Your CSV is missing the "${field}" column header.`,
+                        fix: `Add a column named "${field}" to your CSV file. Download the template for reference.`
+                    });
                 }
             });
 
-            // If NOT custom location, ensure 'locations' column is NOT present (or just warn, but user said "shouldnt be there")
+            // If NOT custom location, ensure 'locations' column is NOT present
             if (!isCustomLocation) {
                 const locIndex = headers.findIndex(h => h.trim().toLowerCase() === 'locations');
                 if (locIndex !== -1) {
-                    errors.push("Column 'locations' should NOT be present when specific locations are selected in the dropdown.");
+                    errors.push({
+                        type: 'header_conflict',
+                        message: `Unexpected 'locations' column found`,
+                        detail: `You selected specific locations from the dropdown, but your CSV also contains a 'locations' column.`,
+                        fix: `Either remove the 'locations' column from your CSV, OR select "Custom Location (Define in CSV)" from the location dropdown above.`
+                    });
                 }
             }
 
@@ -418,7 +430,14 @@ const UpdateCatalogues = () => {
                     const colIndex = headerMap[field];
                     const val = row.values[colIndex];
                     if (!val || val === '' || val.toLowerCase() === 'null') {
-                        errors.push(`Line ${row.line}: Missing required field '${field}'`);
+                        errors.push({
+                            type: 'field_missing',
+                            line: row.line,
+                            productId: row.values[headerMap['id']] || 'Unknown',
+                            message: `Missing value for '${field}'`,
+                            detail: `Row ${row.line} is missing a value in the "${field}" column.`,
+                            fix: `Open your CSV and fill in the "${field}" value for the product on line ${row.line}.`
+                        });
                     }
                 });
 
@@ -426,7 +445,14 @@ const UpdateCatalogues = () => {
                 const idVal = row.values[headerMap['id']];
                 if (idVal && idVal !== '' && idVal.toLowerCase() !== 'null') {
                     if (seenIds.has(idVal)) {
-                        errors.push(`Line ${row.line}: Duplicate ID found '${idVal}'. IDs must be unique.`);
+                        errors.push({
+                            type: 'duplicate_id',
+                            line: row.line,
+                            productId: idVal,
+                            message: `Duplicate product ID: ${idVal}`,
+                            detail: `The ID "${idVal}" appears multiple times in your CSV. Each product must have a unique ID.`,
+                            fix: `Find all rows with ID "${idVal}" and ensure each product has a unique ID value.`
+                        });
                     } else {
                         seenIds.add(idVal);
                     }
@@ -440,7 +466,14 @@ const UpdateCatalogues = () => {
                         const locs = locVal.split(',').map(s => s.trim());
                         locs.forEach(l => {
                             if (!validLocationNames.includes(l.toLowerCase())) {
-                                errors.push(`Line ${row.line}: Invalid location '${l}'. Must be one of: ${clientLocations.map(cl => cl.name).join(', ')}`);
+                                errors.push({
+                                    type: 'invalid_location',
+                                    line: row.line,
+                                    productId: row.values[headerMap['id']] || 'Unknown',
+                                    message: `Invalid location: ${l}`,
+                                    detail: `The location "${l}" on line ${row.line} is not recognized for this client.`,
+                                    fix: `Use one of these valid locations: ${clientLocations.map(cl => cl.name).join(', ')}`
+                                });
                             }
                         });
                     }
@@ -455,12 +488,75 @@ const UpdateCatalogues = () => {
 
                     const id = row.values[idIndex];
 
+                    // Size limits
+                    const MIN_IMAGE_SIZE = 10 * 1024;      // 10KB
+                    const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+                    const formatSize = (bytes) => {
+                        if (bytes < 1024) return `${bytes} B`;
+                        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+                    };
+
+                    // Step 1: Check if product folder exists in zip (using Map keys)
+                    const productFolderPath = `garments/${id}/`;
+                    const folderExists = Array.from(currentZipEntries.keys()).some(entry => entry.startsWith(productFolderPath));
+
+                    if (!folderExists) {
+                        errors.push({
+                            type: 'folder_missing',
+                            line: row.line,
+                            productId: id,
+                            message: `Product folder missing in ZIP`,
+                            detail: `Expected folder: garments/${id}/`,
+                            fix: `Create a folder named "${id}" inside the "garments" folder in your zip file, then add all images for this product inside it.`
+                        });
+                        return; // Skip image checks if folder doesn't exist
+                    }
+
+                    // Step 2: Check individual images (existence and size)
                     const checkImage = (filename, type) => {
                         if (!filename || filename.toLowerCase() === 'null') return;
-                        // Expected path: garments/{id}/{filename}
                         const expectedPath = `garments/${id}/${filename}`;
+
                         if (!currentZipEntries.has(expectedPath)) {
-                            errors.push(`Line ${row.line}: Image not found in zip: ${expectedPath}`);
+                            errors.push({
+                                type: 'image_missing',
+                                line: row.line,
+                                productId: id,
+                                imageType: type,
+                                filename: filename,
+                                message: `${type} image not found`,
+                                detail: `Missing: ${expectedPath}`,
+                                fix: `Add the file "${filename}" to the folder "garments/${id}/" in your zip, OR update the "${type === 'Thumbnail' ? 'Thumbnail Image Filename' : type === 'Vton' ? 'Vton Ready Image Filename' : 'Other images filename'}" column in your CSV to match the actual filename.`
+                            });
+                        } else {
+                            // Check file size
+                            const fileSize = currentZipEntries.get(expectedPath);
+
+                            if (fileSize > MAX_IMAGE_SIZE) {
+                                errors.push({
+                                    type: 'image_too_large',
+                                    line: row.line,
+                                    productId: id,
+                                    imageType: type,
+                                    filename: filename,
+                                    message: `${type} image exceeds 5MB limit`,
+                                    detail: `File "${filename}" is ${formatSize(fileSize)} (max allowed: 5MB).`,
+                                    fix: `Compress or resize the image "${filename}" to be under 5MB. Use tools like TinyPNG or Photoshop's "Save for Web".`
+                                });
+                            } else if (fileSize < MIN_IMAGE_SIZE) {
+                                errors.push({
+                                    type: 'image_too_small',
+                                    line: row.line,
+                                    productId: id,
+                                    imageType: type,
+                                    filename: filename,
+                                    message: `${type} image is suspiciously small`,
+                                    detail: `File "${filename}" is only ${formatSize(fileSize)} (min expected: 10KB).`,
+                                    fix: `This file may be corrupted, a placeholder, or too low quality. Replace with a proper high-resolution image (minimum 10KB).`
+                                });
+                            }
                         }
                     };
 
@@ -481,7 +577,12 @@ const UpdateCatalogues = () => {
             } else if (!activeZipFile) {
                 // Warn that zip is missing? User said "uploaded folder should be a zip file too".
                 // Maybe strict error?
-                errors.push("Missing Image Zip file. Please upload the images zip.");
+                errors.push({
+                    type: 'zip_missing',
+                    message: `No images ZIP file uploaded`,
+                    detail: `You must upload a ZIP file containing product images to validate your catalogue.`,
+                    fix: `Upload a ZIP file with this structure: garments/{product_id}/image.jpg. Use the "Upload Images" section above.`
+                });
             }
 
             if (errors.length > 0) {
@@ -1285,18 +1386,256 @@ const UpdateCatalogues = () => {
                             )}
 
                             {validationStatus === 'error' && (
-                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fb7185', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                        <Warning size={20} weight="fill" />
-                                        <span>Validation Failed</span>
+                                <div style={{ padding: '1rem', borderRadius: '12px', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(244, 63, 94, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fb7185' }}>
+                                            <Warning size={18} weight="fill" />
+                                        </div>
+                                        <div>
+                                            <p style={{ margin: 0, fontWeight: 600, color: '#fb7185', fontSize: '0.95rem' }}>Validation Failed</p>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#fda4af' }}>{validationErrors.length} issue{validationErrors.length !== 1 ? 's' : ''} found in your files.</p>
+                                        </div>
                                     </div>
-                                    <ul className="custom-scrollbar" style={{ paddingLeft: '1.25rem', margin: 0, fontSize: '0.75rem', color: '#fda4af', maxHeight: '8rem', overflowY: 'auto' }}>
-                                        {validationErrors.map((err, i) => (
-                                            <li key={i} style={{ marginBottom: '0.25rem' }}>{err}</li>
-                                        ))}
-                                    </ul>
+                                    <button
+                                        onClick={() => setShowErrorModal(true)}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '8px',
+                                            background: 'rgba(244, 63, 94, 0.2)',
+                                            border: '1px solid rgba(244, 63, 94, 0.3)',
+                                            color: '#fb7185',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        className="hover:bg-red-500/30"
+                                    >
+                                        View Issues
+                                    </button>
                                 </div>
                             )}
+
+                            {/* Validation Error Modal */}
+                            {showErrorModal && (() => {
+                                // Group errors by type
+                                const groupedErrors = validationErrors.reduce((acc, err) => {
+                                    const type = typeof err === 'object' ? err.type : 'general';
+                                    if (!acc[type]) acc[type] = [];
+                                    acc[type].push(err);
+                                    return acc;
+                                }, {});
+
+                                const errorTypeConfig = {
+                                    header_missing: { label: 'Missing CSV Columns', icon: <FileText size={20} weight="fill" />, color: '#ef4444' },
+                                    header_conflict: { label: 'Column Conflicts', icon: <Warning size={20} weight="fill" />, color: '#f59e0b' },
+                                    field_missing: { label: 'Missing Field Values', icon: <XCircle size={20} weight="fill" />, color: '#ef4444' },
+                                    duplicate_id: { label: 'Duplicate Product IDs', icon: <Copy size={20} weight="fill" />, color: '#f97316' },
+                                    invalid_location: { label: 'Invalid Locations', icon: <MapPin size={20} weight="fill" />, color: '#8b5cf6' },
+                                    folder_missing: { label: 'Missing Product Folders', icon: <Folder size={20} weight="fill" />, color: '#3b82f6' },
+                                    image_missing: { label: 'Missing Images', icon: <Image size={20} weight="fill" />, color: '#ef4444' },
+                                    image_too_large: { label: 'Oversized Images (>5MB)', icon: <FileZip size={20} weight="fill" />, color: '#f97316' },
+                                    image_too_small: { label: 'Suspiciously Small Images', icon: <MagnifyingGlass size={20} weight="bold" />, color: '#eab308' },
+                                    zip_missing: { label: 'ZIP File Required', icon: <Package size={20} weight="fill" />, color: '#ef4444' },
+                                    general: { label: 'General Errors', icon: <Warning size={20} weight="fill" />, color: '#ef4444' }
+                                };
+
+                                return createPortal(
+                                    <div style={{
+                                        position: 'fixed',
+                                        inset: 0,
+                                        zIndex: 10000,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '1.5rem',
+                                        backdropFilter: 'blur(8px)',
+                                        background: 'rgba(9, 9, 11, 0.75)'
+                                    }}>
+                                        <div style={{
+                                            background: '#0f172a',
+                                            border: '1px solid rgba(148, 163, 184, 0.1)',
+                                            borderRadius: '12px',
+                                            width: '100%',
+                                            maxWidth: '720px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            maxHeight: '85vh',
+                                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                                        }}>
+                                            {/* Header */}
+                                            <div style={{
+                                                padding: '1.25rem 1.5rem',
+                                                borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                background: 'rgba(30, 41, 59, 0.5)'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{
+                                                        width: '40px',
+                                                        height: '40px',
+                                                        borderRadius: '8px',
+                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#ef4444'
+                                                    }}>
+                                                        <Warning size={22} weight="fill" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc' }}>Validation Issues Found</h3>
+                                                        <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                                            {validationErrors.length} issues need attention before upload
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowErrorModal(false)}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: '#64748b',
+                                                        cursor: 'pointer',
+                                                        padding: '0.5rem',
+                                                        borderRadius: '6px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    className="hover:bg-slate-800 hover:text-white"
+                                                >
+                                                    <X size={20} weight="bold" />
+                                                </button>
+                                            </div>
+
+                                            {/* Content Area */}
+                                            <div className="custom-scrollbar" style={{ padding: '1.5rem', overflowY: 'auto' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                    {Object.entries(groupedErrors).map(([type, errors]) => {
+                                                        const config = errorTypeConfig[type] || errorTypeConfig.general;
+
+                                                        return (
+                                                            <div key={type} style={{
+                                                                background: 'rgba(30, 41, 59, 0.3)',
+                                                                borderRadius: '8px',
+                                                                border: '1px solid rgba(148, 163, 184, 0.1)',
+                                                                overflow: 'hidden'
+                                                            }}>
+                                                                {/* Category Header */}
+                                                                <div style={{
+                                                                    padding: '0.75rem 1rem',
+                                                                    background: 'rgba(15, 23, 42, 0.4)',
+                                                                    borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.75rem'
+                                                                }}>
+                                                                    <div style={{ color: config.color, display: 'flex' }}>
+                                                                        {config.icon}
+                                                                    </div>
+                                                                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#e2e8f0' }}>
+                                                                        {config.label}
+                                                                    </h4>
+                                                                    <span style={{
+                                                                        marginLeft: 'auto',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: 600,
+                                                                        color: '#94a3b8',
+                                                                        background: 'rgba(148, 163, 184, 0.1)',
+                                                                        padding: '0.15rem 0.5rem',
+                                                                        borderRadius: '999px'
+                                                                    }}>
+                                                                        {errors.length}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Errors List */}
+                                                                <div className="custom-scrollbar" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                                    {errors.map((err, i) => (
+                                                                        <div key={i} style={{
+                                                                            padding: '1rem',
+                                                                            borderBottom: i < errors.length - 1 ? '1px solid rgba(148, 163, 184, 0.05)' : 'none',
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            gap: '0.5rem'
+                                                                        }}>
+                                                                            {typeof err === 'object' ? (
+                                                                                <>
+                                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.1rem' }}>
+                                                                                        <div style={{ flex: 1 }}>
+                                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                                                                                                <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#e2e8f0' }}>
+                                                                                                    {err.message}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
+                                                                                                {err.line && (
+                                                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(148, 163, 184, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                                                                                                        <List size={12} weight="bold" /> Line {err.line}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                {err.productId && (
+                                                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(148, 163, 184, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                                                                                                        <Package size={12} weight="bold" /> ID: {err.productId}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                                                                                        {err.detail}
+                                                                                    </p>
+
+
+                                                                                </>
+                                                                            ) : (
+                                                                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#fda4af' }}>{err}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Footer */}
+                                            <div style={{
+                                                padding: '1rem 1.5rem',
+                                                borderTop: '1px solid rgba(148, 163, 184, 0.1)',
+                                                display: 'flex',
+                                                justifyContent: 'flex-end',
+                                                background: 'rgba(30, 41, 59, 0.5)'
+                                            }}>
+                                                <button
+                                                    onClick={() => setShowErrorModal(false)}
+                                                    style={{
+                                                        padding: '0.6rem 2rem',
+                                                        borderRadius: '6px',
+                                                        background: '#e2e8f0',
+                                                        color: '#0f172a',
+                                                        border: 'none',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                    }}
+                                                >
+                                                    Close
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>,
+                                    document.body
+                                );
+                            })()}
 
 
 
